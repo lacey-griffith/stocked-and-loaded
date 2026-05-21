@@ -155,10 +155,10 @@ export default function App() {
 
   const sortedFiltered = sortCol ? [...filtered].sort((a, b) => {
     let av, bv
-    if (sortCol === 'name') { av = a.name.toLowerCase(); bv = b.name.toLowerCase() }
-    else if (sortCol === 'cat') { av = a.cat.toLowerCase(); bv = b.cat.toLowerCase() }
+    if (sortCol === 'name') { av = (a.name || '').toLowerCase(); bv = (b.name || '').toLowerCase() }
+    else if (sortCol === 'cat') { av = (a.cat || '').toLowerCase(); bv = (b.cat || '').toLowerCase() }
     else if (sortCol === 'unitPrice') { av = parseUnitPrice(a.unitPrice); bv = parseUnitPrice(b.unitPrice) }
-    else if (sortCol === 'total') { av = a.price; bv = b.price }
+    else if (sortCol === 'total') { av = a.price ?? 0; bv = b.price ?? 0 }
     if (av < bv) return sortDir === 'asc' ? -1 : 1
     if (av > bv) return sortDir === 'asc' ? 1 : -1
     return 0
@@ -524,8 +524,8 @@ export default function App() {
                   <span key={col} className={styles.sortable} onClick={() => cycleSort(col)}>
                     {label}
                     {sortCol === col
-                      ? <i className={`ti ti-chevron-${sortDir === 'asc' ? 'up' : 'down'}`} />
-                      : <i className={`ti ti-chevron-up ${styles.sortInactive}`} />}
+                      ? <i key="active" className={`ti ti-chevron-${sortDir === 'asc' ? 'up' : 'down'}`} />
+                      : <i key="inactive" className={`ti ti-chevron-up ${styles.sortInactive}`} />}
                   </span>
                 ))}
               </div>
