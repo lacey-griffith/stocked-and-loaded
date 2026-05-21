@@ -33,3 +33,7 @@ Added persistent category overrides. Items tab category column is now a pill-sha
 ### 2026-05-21
 Added asc/desc/off column sorting to the items table. Each of the four column headers is clickable and cycles through states; active column shows a directional chevron, inactive columns show a faded up-chevron hint. Jenny and Karen both audited before push — two fixes applied (null guards on name/cat comparators, key props on chevron elements).
 - No known issues.
+
+### 2026-05-21
+Added time range filtering to the items and orders tabs. A filter bar with 30d/60d/90d pills, a month dropdown (built from actual order dates), and a custom date range picker sits above both tabs. Selection persists to localStorage via `stocked_loaded_time_range`. An active indicator chip shows how many records match (e.g. "12 of 79 orders").
+- No known issues.
