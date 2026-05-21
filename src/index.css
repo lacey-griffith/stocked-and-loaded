@@ -5,26 +5,52 @@
 }
 
 :root {
+  /* HEB Brand palette */
+  --color-heb-red: #E1251B;
+  --color-curbside-blue: #007DB3;
+  --color-brisket-red: #C12033;
+  --color-tamale-yellow: #FCD131;
+  --color-cheese-puff-orange: #EF8D29;
+  --color-cold-brew-50: #F5F5F5;
+  --color-cold-brew-800: #414142;
+  --color-cold-brew-900: #333333;
+  --color-buttercream: #FFFFFF;
+  --color-peppercorn: #000000;
+  --color-teal: #2B8562;
+
+  /* Backgrounds */
   --bg: #faf9f7;
-  --bg-card: #ffffff;
-  --bg-surface: #f3f1ee;
-  --bg-hover: #ede9e3;
+  --bg-card: var(--color-buttercream);
+  --bg-surface: var(--color-cold-brew-50);
+  --bg-hover: #ebebeb;
+
+  /* Text */
   --text-primary: #1a1916;
   --text-secondary: #6b6860;
   --text-muted: #9e9b95;
+
+  /* Borders */
   --border: rgba(0,0,0,0.08);
   --border-strong: rgba(0,0,0,0.14);
-  --accent: #2d6a4f;
-  --accent-light: #e8f5ee;
+
+  /* Accent (teal — charts, active tabs, focus rings) */
+  --accent: var(--color-teal);
+  --accent-light: #e6f3ee;
   --accent-text: #1b4332;
+
+  /* Primary actions (HEB red — primary buttons) */
+  --primary: var(--color-heb-red);
+
+  /* Semantic */
   --warning: #b45309;
   --warning-light: #fef3c7;
-  --danger: #9b1c1c;
-  --danger-light: #fef2f2;
+  --danger: var(--color-brisket-red);
+  --danger-light: #fdedef;
   --success: #065f46;
   --success-light: #ecfdf5;
   --info: #1e40af;
   --info-light: #eff6ff;
+
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
@@ -45,7 +71,7 @@
     --text-muted: #6b6860;
     --border: rgba(255,255,255,0.08);
     --border-strong: rgba(255,255,255,0.14);
-    --accent: #52b788;
+    --accent: #4db88a;
     --accent-light: #1b3a2a;
     --accent-text: #95d5b2;
     --warning: #f59e0b;
@@ -88,7 +114,7 @@ input, select {
 
 input:focus, select:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(82, 183, 136, 0.15);
+  box-shadow: 0 0 0 3px rgba(43, 133, 98, 0.15);
 }
 
 button {
@@ -109,9 +135,9 @@ button:hover { background: var(--bg-hover); color: var(--text-primary); }
 button:active { transform: scale(0.98); }
 
 button.primary {
-  background: var(--accent);
+  background: var(--primary);
   color: white;
-  border-color: var(--accent);
+  border-color: var(--primary);
 }
 button.primary:hover { opacity: 0.9; color: white; }
 
