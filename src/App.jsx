@@ -8,6 +8,7 @@ Chart.register(...registerables)
 
 const STORAGE_KEY = 'stocked_and_loaded_v1'
 const CATEGORY_OVERRIDES_KEY = 'stocked_loaded_cat_overrides'
+const TIME_RANGE_KEY = 'stocked_loaded_time_range'
 
 function loadOrders() {
   try {
@@ -33,6 +34,15 @@ function loadOverrides() {
   }
 }
 
+function loadTimeRangePrefs() {
+  try {
+    const saved = localStorage.getItem(TIME_RANGE_KEY)
+    return saved ? JSON.parse(saved) : { range: 'all', month: '', from: '', to: '' }
+  } catch {
+    return { range: 'all', month: '', from: '', to: '' }
+  }
+}
+
 function parseDate(str) {
   return new Date(str.replace(/–.*/, '').trim())
 }
@@ -41,6 +51,33 @@ function parseUnitPrice(str) {
   if (!str) return 0
   const m = str.match(/\$?([\d.]+)/)
   return m ? parseFloat(m[1]) : 0
+}
+
+function getDateBounds(timeRange, customFrom, customTo, timeRangeMonth) {
+  if (timeRange === 'all') return null
+  const now = new Date()
+  if (timeRange === '30' || timeRange === '60' || timeRange === '90') {
+    const from = new Date(now)
+    from.setDate(from.getDate() - parseInt(timeRange))
+    return { from, to: now }
+  }
+  if (timeRange === 'month' && timeRangeMonth) {
+    const [yr, mo] = timeRangeMonth.split('-').map(Number)
+    return { from: new Date(yr, mo - 1, 1), to: new Date(yr, mo, 0, 23, 59, 59) }
+  }
+  if (timeRange === 'custom' && customFrom && customTo) {
+    return {
+      from: new Date(customFrom + 'T00:00:00'),
+      to: new Date(customTo + 'T23:59:59'),
+    }
+  }
+  return null
+}
+
+function inRange(dateStr, bounds) {
+  if (!bounds) return true
+  const d = parseDate(dateStr)
+  return d >= bounds.from && d <= bounds.to
 }
 
 function SparkLine({ entries }) {
@@ -97,7 +134,21 @@ export default function App() {
   const spendChartInst = useRef(null)
   const catChartInst = useRef(null)
 
+  const initPrefs = loadTimeRangePrefs()
+  const [timeRange, setTimeRange] = useState(initPrefs.range)
+  const [timeRangeMonth, setTimeRangeMonth] = useState(initPrefs.month)
+  const [customFrom, setCustomFrom] = useState(initPrefs.from)
+  const [customTo, setCustomTo] = useState(initPrefs.to)
+
   useEffect(() => { saveOrders(orders) }, [orders])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(TIME_RANGE_KEY, JSON.stringify({
+        range: timeRange, month: timeRangeMonth, from: customFrom, to: customTo
+      }))
+    } catch {}
+  }, [timeRange, timeRangeMonth, customFrom, customTo])
 
   function setCatOverride(key, cat) {
     setCatOverrides(prev => {
@@ -107,12 +158,24 @@ export default function App() {
     })
   }
 
+  // Unfiltered — used for overview, priceHistory, catTotals dropdown options
   const allItems = orders.flatMap(o =>
     (o.items || []).filter(i => i.price > 0).map(i => {
       const k = i.productId || i.name
       return { ...i, orderDate: o.date, orderId: o.orderId, cat: catOverrides[k] || categorize(i.name) }
     })
   )
+
+  // Time-filtered views for orders + items tabs
+  const bounds = getDateBounds(timeRange, customFrom, customTo, timeRangeMonth)
+  const timeFilteredOrders = orders.filter(o => inRange(o.date, bounds))
+  const timeFilteredItems = allItems.filter(i => inRange(i.orderDate, bounds))
+
+  // Month options derived from all orders (not filtered)
+  const orderMonths = [...new Set(orders.map(o => {
+    const d = parseDate(o.date)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  }))].sort()
 
   const totalSpent = orders.reduce((s, o) => s + (o.totalAmount || 0), 0)
   const avgOrder = totalSpent / orders.length
@@ -140,7 +203,7 @@ export default function App() {
 
   const ordersChron = [...orders].sort((a, b) => parseDate(a.date) - parseDate(b.date))
   const cats = ['All', ...Object.keys(catTotals).sort()]
-  const filtered = allItems.filter(i =>
+  const filtered = timeFilteredItems.filter(i =>
     (filterCat === 'All' || i.cat === filterCat) &&
     (!itemSearch || i.name.toLowerCase().includes(itemSearch.toLowerCase()))
   )
@@ -317,6 +380,68 @@ export default function App() {
 
   const shortName = name => name?.replace(/, \d+(\.\d+)?\s*(oz|lb|lbs|ct|L|ml|g|pk).*/i, '').replace(/^H-E-B /i, '').replace(/^Hill Country Fare /i, '')
 
+  const isFiltered = timeRange !== 'all'
+
+  function TimeFilterBar() {
+    const monthLabel = m => {
+      const [yr, mo] = m.split('-').map(Number)
+      return new Date(yr, mo - 1, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+    }
+    return (
+      <div className={styles.timeFilterBar}>
+        <div className={styles.timeFilterPills}>
+          {[['all','All'],['30','30d'],['60','60d'],['90','90d']].map(([val, label]) => (
+            <button
+              key={val}
+              className={`${styles.timeFilterPill} ${timeRange === val ? styles.timeFilterPillActive : ''}`}
+              onClick={() => setTimeRange(val)}
+            >
+              {label}
+            </button>
+          ))}
+          <select
+            className={`${styles.timeFilterPill} ${timeRange === 'month' ? styles.timeFilterPillActive : ''}`}
+            value={timeRange === 'month' ? timeRangeMonth : ''}
+            onChange={e => {
+              if (e.target.value) { setTimeRangeMonth(e.target.value); setTimeRange('month') }
+            }}
+          >
+            <option value="">Month…</option>
+            {orderMonths.map(m => <option key={m} value={m}>{monthLabel(m)}</option>)}
+          </select>
+        </div>
+        <div className={styles.timeFilterCustom}>
+          <input
+            type="date"
+            className={styles.timeFilterDate}
+            value={customFrom}
+            onChange={e => {
+              setCustomFrom(e.target.value)
+              if (e.target.value && customTo) setTimeRange('custom')
+            }}
+          />
+          <span className={styles.timeFilterDash}>–</span>
+          <input
+            type="date"
+            className={styles.timeFilterDate}
+            value={customTo}
+            onChange={e => {
+              setCustomTo(e.target.value)
+              if (customFrom && e.target.value) setTimeRange('custom')
+            }}
+          />
+        </div>
+        {isFiltered && (
+          <span className={styles.timeFilterIndicator}>
+            {tab === 'orders'
+              ? `${timeFilteredOrders.length} of ${orders.length} orders`
+              : `${timeFilteredItems.length} of ${allItems.length} items`}
+          </span>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className={styles.app}>
       <header className={styles.header}>
@@ -457,53 +582,57 @@ export default function App() {
         )}
 
         {tab === 'orders' && (
-          <div className={styles.orderList}>
-            {orders.map(o => {
-              const open = expandedOrder === o.orderId
-              return (
-                <div
-                  key={o.orderId}
-                  className={`${styles.orderCard} ${open ? styles.orderCardOpen : ''}`}
-                  onClick={() => setExpandedOrder(open ? null : o.orderId)}
-                >
-                  <div className={styles.orderCardHeader}>
-                    <div>
-                      <p className={styles.orderDate}>{o.date}</p>
-                      <p className={styles.orderLocation}>{o.header}</p>
+          <>
+            <TimeFilterBar />
+            <div className={styles.orderList}>
+              {timeFilteredOrders.map(o => {
+                const open = expandedOrder === o.orderId
+                return (
+                  <div
+                    key={o.orderId}
+                    className={`${styles.orderCard} ${open ? styles.orderCardOpen : ''}`}
+                    onClick={() => setExpandedOrder(open ? null : o.orderId)}
+                  >
+                    <div className={styles.orderCardHeader}>
+                      <div>
+                        <p className={styles.orderDate}>{o.date}</p>
+                        <p className={styles.orderLocation}>{o.header}</p>
+                      </div>
+                      <div className={styles.orderMeta}>
+                        <p className={styles.orderTotal}>${(o.totalAmount || 0).toFixed(2)}</p>
+                        <p className={styles.orderSub}>{o.itemCount} items · <span className={styles.orderStatus}>{o.status}</span></p>
+                      </div>
                     </div>
-                    <div className={styles.orderMeta}>
-                      <p className={styles.orderTotal}>${(o.totalAmount || 0).toFixed(2)}</p>
-                      <p className={styles.orderSub}>{o.itemCount} items · <span className={styles.orderStatus}>{o.status}</span></p>
-                    </div>
+                    {open && (
+                      <div className={styles.orderItems} onClick={e => e.stopPropagation()}>
+                        {(o.items || []).filter(i => i.price > 0).map((item, idx) => {
+                          const cat = catOverrides[item.productId || item.name] || categorize(item.name)
+                          return (
+                            <div key={idx} className={styles.orderItem}>
+                              <span
+                                className={styles.catDot}
+                                style={{ background: CAT_COLORS[cat], boxShadow: `0 0 0 3px ${CAT_BG[cat] || '#f3f4f6'}` }}
+                              />
+                              <span className={styles.orderItemName}>{item.name}</span>
+                              <span className={styles.orderItemMeta}>
+                                {item.quantity && <span>{item.quantity} · </span>}
+                                ${(item.price || 0).toFixed(2)}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
-                  {open && (
-                    <div className={styles.orderItems} onClick={e => e.stopPropagation()}>
-                      {(o.items || []).filter(i => i.price > 0).map((item, idx) => {
-                        const cat = catOverrides[item.productId || item.name] || categorize(item.name)
-                        return (
-                          <div key={idx} className={styles.orderItem}>
-                            <span
-                              className={styles.catDot}
-                              style={{ background: CAT_COLORS[cat], boxShadow: `0 0 0 3px ${CAT_BG[cat] || '#f3f4f6'}` }}
-                            />
-                            <span className={styles.orderItemName}>{item.name}</span>
-                            <span className={styles.orderItemMeta}>
-                              {item.quantity && <span>{item.quantity} · </span>}
-                              ${(item.price || 0).toFixed(2)}
-                            </span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          </>
         )}
 
         {tab === 'items' && (
           <>
+            <TimeFilterBar />
             <div className={styles.filterRow}>
               <div style={{ position: 'relative', flex: 1 }}>
                 <i className="ti ti-search" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: 16 }} aria-hidden="true" />

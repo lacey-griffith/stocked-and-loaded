@@ -552,3 +552,72 @@
   color: #065f46;
   font-weight: 500;
 }
+
+/* Time filter bar */
+.timeFilterBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.timeFilterPills {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.timeFilterPill {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #E5E5E5;
+  border-radius: 20px;
+  padding: 5px 12px;
+  background: #FFFFFF;
+  color: #414142;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--font);
+  white-space: nowrap;
+}
+.timeFilterPill:hover { background: #F5F5F5; border-color: #CCCCCC; }
+
+.timeFilterPillActive {
+  background: #E1251B !important;
+  color: #FFFFFF !important;
+  border-color: #E1251B !important;
+  font-weight: 500;
+}
+
+.timeFilterCustom {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.timeFilterDate {
+  width: 130px;
+  font-size: 13px;
+  padding: 5px 8px;
+  border-radius: 20px;
+}
+
+.timeFilterDash {
+  font-size: 13px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.timeFilterIndicator {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: #F5F5F5;
+  border: 1px solid #E5E5E5;
+  border-radius: 20px;
+  padding: 4px 10px;
+  white-space: nowrap;
+  margin-left: auto;
+}
