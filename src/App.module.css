@@ -430,6 +430,19 @@
   text-overflow: ellipsis;
 }
 
+.catSelect {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  outline: none;
+}
+
 .unitPrice {
   color: var(--text-muted);
   font-family: var(--mono);

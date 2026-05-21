@@ -7,6 +7,7 @@ import styles from './App.module.css'
 Chart.register(...registerables)
 
 const STORAGE_KEY = 'stocked_and_loaded_v1'
+const CATEGORY_OVERRIDES_KEY = 'stocked_loaded_cat_overrides'
 
 function loadOrders() {
   try {
@@ -21,6 +22,15 @@ function saveOrders(orders) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(orders))
   } catch {}
+}
+
+function loadOverrides() {
+  try {
+    const saved = localStorage.getItem(CATEGORY_OVERRIDES_KEY)
+    return saved ? JSON.parse(saved) : {}
+  } catch {
+    return {}
+  }
 }
 
 function parseDate(str) {
@@ -70,6 +80,7 @@ function SparkLine({ entries }) {
 
 export default function App() {
   const [orders, setOrders] = useState(loadOrders)
+  const [catOverrides, setCatOverrides] = useState(loadOverrides)
   const [tab, setTab] = useState('overview')
   const [expandedOrder, setExpandedOrder] = useState(null)
   const [filterCat, setFilterCat] = useState('All')
@@ -86,10 +97,19 @@ export default function App() {
 
   useEffect(() => { saveOrders(orders) }, [orders])
 
+  function setCatOverride(key, cat) {
+    setCatOverrides(prev => {
+      const next = { ...prev, [key]: cat }
+      try { localStorage.setItem(CATEGORY_OVERRIDES_KEY, JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
+
   const allItems = orders.flatMap(o =>
-    (o.items || []).filter(i => i.price > 0).map(i => ({
-      ...i, orderDate: o.date, orderId: o.orderId, cat: categorize(i.name)
-    }))
+    (o.items || []).filter(i => i.price > 0).map(i => {
+      const k = i.productId || i.name
+      return { ...i, orderDate: o.date, orderId: o.orderId, cat: catOverrides[k] || categorize(i.name) }
+    })
   )
 
   const totalSpent = orders.reduce((s, o) => s + (o.totalAmount || 0), 0)
@@ -122,6 +142,8 @@ export default function App() {
     (filterCat === 'All' || i.cat === filterCat) &&
     (!itemSearch || i.name.toLowerCase().includes(itemSearch.toLowerCase()))
   )
+
+  const allCats = Object.keys(CAT_COLORS)
 
   const priceChangesCount = (item) =>
     item.entries.filter((e, i) => i > 0 &&
@@ -191,10 +213,8 @@ export default function App() {
         })
       }
     }, 150)
-    return () => {
-      clearTimeout(timer)
-    }
-  }, [tab, orders])
+    return () => { clearTimeout(timer) }
+  }, [tab, orders, catOverrides])
 
   async function handleScreenshot(e) {
     const file = e.target.files?.[0]
@@ -440,7 +460,7 @@ export default function App() {
                   {open && (
                     <div className={styles.orderItems} onClick={e => e.stopPropagation()}>
                       {(o.items || []).filter(i => i.price > 0).map((item, idx) => {
-                        const cat = categorize(item.name)
+                        const cat = catOverrides[item.productId || item.name] || categorize(item.name)
                         return (
                           <div key={idx} className={styles.orderItem}>
                             <span
@@ -489,9 +509,15 @@ export default function App() {
               {filtered.slice(0, 100).map((item, idx) => (
                 <div key={idx} className={styles.tableRow}>
                   <span className={styles.itemName} title={item.name}>{item.name}</span>
-                  <span className={styles.catBadge} style={{ background: CAT_BG[item.cat] || '#f3f4f6', color: CAT_COLORS[item.cat] || '#6b7280' }}>
-                    {item.cat}
-                  </span>
+                  <select
+                    className={styles.catSelect}
+                    value={item.cat}
+                    style={{ background: CAT_BG[item.cat] || '#f3f4f6', color: CAT_COLORS[item.cat] || '#6b7280' }}
+                    onChange={e => setCatOverride(item.productId || item.name, e.target.value)}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    {allCats.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
                   <span className={styles.unitPrice}>{item.unitPrice}</span>
                   <span className={styles.itemTotal}>${(item.price || 0).toFixed(2)}</span>
                 </div>
