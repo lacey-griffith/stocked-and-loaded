@@ -21,3 +21,7 @@ Applied HEB brand color palette to `index.css`. Added 11 brand variables (`--col
 ### 2026-05-21
 Full rebrand to HEB bright/clean aesthetic. Page background is cold-brew-50 (#F5F5F5), all cards are white with light #E5E5E5 borders and a subtle shadow. Header is HEB red with white text; active tabs are red; bar chart bars are red. Removed the dark-mode media query entirely — app is always light. Secondary buttons (import, add manually) show as white on the red header.
 - No known issues.
+
+### 2026-05-21
+Replaced seed data with the full 79-order HEB export from `heb-orders-2026-05-21 (2).json`. Previous seed had 9 orders; this brings in real order history with more items and a longer date range.
+- No known issues.
