@@ -85,6 +85,8 @@ export default function App() {
   const [expandedOrder, setExpandedOrder] = useState(null)
   const [filterCat, setFilterCat] = useState('All')
   const [itemSearch, setItemSearch] = useState('')
+  const [sortCol, setSortCol] = useState(null)
+  const [sortDir, setSortDir] = useState('asc')
   const [priceSearch, setPriceSearch] = useState('')
   const [importStatus, setImportStatus] = useState(null)
   const [showManual, setShowManual] = useState(false)
@@ -144,6 +146,23 @@ export default function App() {
   )
 
   const allCats = Object.keys(CAT_COLORS)
+
+  function cycleSort(col) {
+    if (sortCol !== col) { setSortCol(col); setSortDir('asc') }
+    else if (sortDir === 'asc') setSortDir('desc')
+    else { setSortCol(null); setSortDir('asc') }
+  }
+
+  const sortedFiltered = sortCol ? [...filtered].sort((a, b) => {
+    let av, bv
+    if (sortCol === 'name') { av = a.name.toLowerCase(); bv = b.name.toLowerCase() }
+    else if (sortCol === 'cat') { av = a.cat.toLowerCase(); bv = b.cat.toLowerCase() }
+    else if (sortCol === 'unitPrice') { av = parseUnitPrice(a.unitPrice); bv = parseUnitPrice(b.unitPrice) }
+    else if (sortCol === 'total') { av = a.price; bv = b.price }
+    if (av < bv) return sortDir === 'asc' ? -1 : 1
+    if (av > bv) return sortDir === 'asc' ? 1 : -1
+    return 0
+  }) : filtered
 
   const priceChangesCount = (item) =>
     item.entries.filter((e, i) => i > 0 &&
@@ -501,12 +520,16 @@ export default function App() {
             </div>
             <div className={styles.card} style={{ padding: 0, overflow: 'hidden' }}>
               <div className={styles.tableHead}>
-                <span>Item</span>
-                <span>Category</span>
-                <span>Unit price</span>
-                <span>Total</span>
+                {[['name','Item'],['cat','Category'],['unitPrice','Unit price'],['total','Total']].map(([col, label]) => (
+                  <span key={col} className={styles.sortable} onClick={() => cycleSort(col)}>
+                    {label}
+                    {sortCol === col
+                      ? <i className={`ti ti-chevron-${sortDir === 'asc' ? 'up' : 'down'}`} />
+                      : <i className={`ti ti-chevron-up ${styles.sortInactive}`} />}
+                  </span>
+                ))}
               </div>
-              {filtered.slice(0, 100).map((item, idx) => (
+              {sortedFiltered.slice(0, 100).map((item, idx) => (
                 <div key={idx} className={styles.tableRow}>
                   <span className={styles.itemName} title={item.name}>{item.name}</span>
                   <select
@@ -522,8 +545,8 @@ export default function App() {
                   <span className={styles.itemTotal}>${(item.price || 0).toFixed(2)}</span>
                 </div>
               ))}
-              {filtered.length > 100 && (
-                <p className={styles.moreHint}>Showing 100 of {filtered.length} — use search to narrow down</p>
+              {sortedFiltered.length > 100 && (
+                <p className={styles.moreHint}>Showing 100 of {sortedFiltered.length} — use search to narrow down</p>
               )}
             </div>
           </>

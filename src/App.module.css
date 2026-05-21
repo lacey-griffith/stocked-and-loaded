@@ -401,6 +401,19 @@
   border-bottom: 1px solid #E5E5E5;
 }
 
+.sortable {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+.sortable:hover { color: var(--text-primary); }
+
+.sortInactive {
+  opacity: 0.25;
+}
+
 .tableRow {
   display: grid;
   grid-template-columns: 1fr 130px 100px 70px;
