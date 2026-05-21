@@ -145,7 +145,7 @@ export default function App() {
             datasets: [{
               label: 'Order total',
               data: ordersChron.map(o => o.totalAmount),
-              backgroundColor: '#2B8562',
+              backgroundColor: '#E1251B',
               borderRadius: 5,
               borderSkipped: false,
             }]

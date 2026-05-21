@@ -7,24 +7,27 @@
 /* Header */
 .header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 2rem;
   flex-wrap: wrap;
+  background: #E1251B;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
 }
 
 .title {
   font-size: 28px;
   font-weight: 300;
   letter-spacing: -0.5px;
-  color: var(--text-primary);
+  color: #FFFFFF;
   font-style: italic;
 }
 
 .subtitle {
   font-size: 13px;
-  color: var(--text-muted);
+  color: rgba(255,255,255,0.75);
   margin-top: 2px;
 }
 
@@ -44,23 +47,24 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid var(--border-strong);
+  border: 1px solid #FFFFFF;
   border-radius: 8px;
   padding: 7px 14px;
-  background: var(--bg-card);
-  color: var(--text-secondary);
+  background: #FFFFFF;
+  color: #E1251B;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.15s;
   font-family: var(--font);
   white-space: nowrap;
+  font-weight: 500;
 }
-.importBtn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.importBtn:hover { background: rgba(255,255,255,0.9); }
 
 .activeBtn {
-  background: var(--accent-light) !important;
-  color: var(--accent-text) !important;
-  border-color: var(--accent) !important;
+  background: rgba(255,255,255,0.18) !important;
+  color: #FFFFFF !important;
+  border-color: rgba(255,255,255,0.6) !important;
 }
 
 .importBadge {
@@ -71,21 +75,23 @@
 }
 .importBadge.loading { background: var(--info-light); color: var(--info); }
 .importBadge.success { background: var(--success-light); color: var(--success); }
-.importBadge.error { background: var(--danger-light); color: var(--danger); }
+.importBadge.error { background: #FFFFFF; color: #E1251B; }
 
 /* Manual Panel */
 .manualPanel {
-  background: var(--bg-card);
-  border: 1px solid var(--border-strong);
+  background: #FFFFFF;
+  border: 1px solid #E5E5E5;
   border-radius: 12px;
   padding: 1.25rem;
   margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-card);
 }
 
 .panelTitle {
   font-weight: 500;
   font-size: 14px;
   margin-bottom: 1rem;
+  color: var(--text-primary);
 }
 
 .field label {
@@ -124,26 +130,26 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid var(--border);
+  border: 1px solid #E5E5E5;
   border-radius: 8px;
   padding: 7px 14px;
-  background: transparent;
-  color: var(--text-muted);
+  background: #FFFFFF;
+  color: #414142;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.15s;
 }
-.tab:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border-strong); }
+.tab:hover { background: #F5F5F5; color: #333333; border-color: #CCCCCC; }
 
 .activeTab {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid var(--accent);
+  border: 1px solid #E1251B;
   border-radius: 8px;
   padding: 7px 14px;
-  background: var(--accent-light);
-  color: var(--accent-text);
+  background: #E1251B;
+  color: #FFFFFF;
   font-size: 14px;
   cursor: pointer;
   font-weight: 500;
@@ -164,12 +170,14 @@
 }
 
 .metric {
-  background: var(--bg-surface);
+  background: #FFFFFF;
+  border: 1px solid #E5E5E5;
   border-radius: 10px;
   padding: 1rem;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  box-shadow: var(--shadow-card);
 }
 
 .metricLabel {
@@ -197,10 +205,11 @@
 }
 
 .card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  background: #FFFFFF;
+  border: 1px solid #E5E5E5;
   border-radius: 12px;
   padding: 1.25rem;
+  box-shadow: var(--shadow-card);
 }
 
 .cardLabel {
@@ -250,7 +259,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 7px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid #E5E5E5;
 }
 
 .repeatName {
@@ -278,21 +287,22 @@
 }
 
 .orderCard {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  background: #FFFFFF;
+  border: 1px solid #E5E5E5;
   border-radius: 12px;
   padding: 1rem 1.25rem;
   cursor: pointer;
+  box-shadow: var(--shadow-card);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .orderCard:hover {
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-sm);
+  border-color: #CCCCCC;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
 .orderCardOpen {
-  border-color: var(--accent);
+  border-color: #E1251B;
 }
 
 .orderCardHeader {
@@ -305,6 +315,7 @@
 .orderDate {
   font-weight: 500;
   font-size: 14px;
+  color: var(--text-primary);
 }
 
 .orderLocation {
@@ -321,6 +332,7 @@
 .orderTotal {
   font-weight: 500;
   font-family: var(--mono);
+  color: var(--text-primary);
 }
 
 .orderSub {
@@ -330,12 +342,12 @@
 }
 
 .orderStatus {
-  color: var(--accent);
+  color: #E1251B;
 }
 
 .orderItems {
   margin-top: 12px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid #E5E5E5;
   padding-top: 12px;
 }
 
@@ -344,7 +356,7 @@
   align-items: center;
   gap: 8px;
   padding: 5px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid #E5E5E5;
   font-size: 13px;
 }
 
@@ -386,7 +398,7 @@
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid #E5E5E5;
 }
 
 .tableRow {
@@ -394,12 +406,12 @@
   grid-template-columns: 1fr 130px 100px 70px;
   gap: 0 12px;
   padding: 9px 1.25rem;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid #E5E5E5;
   font-size: 13px;
   align-items: center;
   transition: background 0.1s;
 }
-.tableRow:hover { background: var(--bg-surface); }
+.tableRow:hover { background: #F5F5F5; }
 .tableRow:last-child { border-bottom: none; }
 
 .itemName {
@@ -461,6 +473,7 @@
   font-size: 13px;
   font-weight: 500;
   flex: 1;
+  color: var(--text-primary);
 }
 
 .priceEntries {
@@ -473,18 +486,21 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background: var(--bg-surface);
+  background: #F5F5F5;
+  border: 1px solid #E5E5E5;
   border-radius: 6px;
   padding: 5px 10px;
   font-size: 12px;
 }
 
 .priceUp {
-  background: var(--warning-light);
+  background: #FFF4F4;
+  border-color: #FCCACA;
 }
 
 .priceDown {
-  background: var(--success-light);
+  background: #F0FAF5;
+  border-color: #B7E4CC;
 }
 
 .priceDate {
@@ -494,18 +510,19 @@
 .priceVal {
   font-weight: 500;
   font-family: var(--mono);
+  color: var(--text-primary);
 }
 
 .priceDeltaUp {
   font-size: 11px;
   font-family: var(--mono);
-  color: var(--danger);
+  color: #C12033;
   font-weight: 500;
 }
 
 .priceDeltaDown {
   font-size: 11px;
   font-family: var(--mono);
-  color: var(--success);
+  color: #065f46;
   font-weight: 500;
 }
