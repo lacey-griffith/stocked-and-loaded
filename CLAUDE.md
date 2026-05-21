@@ -29,3 +29,7 @@ Replaced seed data with the full 79-order HEB export from `heb-orders-2026-05-21
 ### 2026-05-21
 Added persistent category overrides. Items tab category column is now a pill-shaped select — changing it writes to `stocked_loaded_cat_overrides` in localStorage immediately. Overrides flow into `allItems` so they propagate to the overview donut chart, order detail color dots, and price history without any extra steps.
 - No known issues.
+
+### 2026-05-21
+Added asc/desc/off column sorting to the items table. Each of the four column headers is clickable and cycles through states; active column shows a directional chevron, inactive columns show a faded up-chevron hint. Jenny and Karen both audited before push — two fixes applied (null guards on name/cat comparators, key props on chevron elements).
+- No known issues.
