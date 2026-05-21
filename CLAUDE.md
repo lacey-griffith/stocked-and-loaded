@@ -25,3 +25,7 @@ Full rebrand to HEB bright/clean aesthetic. Page background is cold-brew-50 (#F5
 ### 2026-05-21
 Replaced seed data with the full 79-order HEB export from `heb-orders-2026-05-21 (2).json`. Previous seed had 9 orders; this brings in real order history with more items and a longer date range.
 - No known issues.
+
+### 2026-05-21
+Added persistent category overrides. Items tab category column is now a pill-shaped select — changing it writes to `stocked_loaded_cat_overrides` in localStorage immediately. Overrides flow into `allItems` so they propagate to the overview donut chart, order detail color dots, and price history without any extra steps.
+- No known issues.
