@@ -24,7 +24,48 @@ function saveOrders(orders) {
 }
 
 function parseDate(str) {
-  return new Date(str.replace(/\u2013.*/, '').trim())
+  return new Date(str.replace(/–.*/, '').trim())
+}
+
+function parseUnitPrice(str) {
+  if (!str) return 0
+  const m = str.match(/\$?([\d.]+)/)
+  return m ? parseFloat(m[1]) : 0
+}
+
+function SparkLine({ entries }) {
+  const canvasRef = useRef(null)
+  const chartRef = useRef(null)
+
+  useEffect(() => {
+    if (!canvasRef.current || entries.length < 2) return
+    chartRef.current?.destroy()
+    const prices = entries.map(e => parseUnitPrice(e.unitPrice))
+    chartRef.current = new Chart(canvasRef.current, {
+      type: 'line',
+      data: {
+        labels: entries.map((_, i) => i),
+        datasets: [{
+          data: prices,
+          borderColor: '#2B8562',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.3,
+          fill: false,
+        }]
+      },
+      options: {
+        responsive: false,
+        animation: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: { x: { display: false }, y: { display: false } },
+      }
+    })
+    return () => { chartRef.current?.destroy() }
+  }, [entries])
+
+  if (entries.length < 2) return null
+  return <canvas ref={canvasRef} width={120} height={48} style={{ display: 'block' }} />
 }
 
 export default function App() {
@@ -33,6 +74,7 @@ export default function App() {
   const [expandedOrder, setExpandedOrder] = useState(null)
   const [filterCat, setFilterCat] = useState('All')
   const [itemSearch, setItemSearch] = useState('')
+  const [priceSearch, setPriceSearch] = useState('')
   const [importStatus, setImportStatus] = useState(null)
   const [showManual, setShowManual] = useState(false)
   const [manDate, setManDate] = useState('')
@@ -63,6 +105,9 @@ export default function App() {
     if (!priceHistory[k]) priceHistory[k] = { name: i.name, entries: [] }
     priceHistory[k].entries.push({ date: i.orderDate, unitPrice: i.unitPrice, price: i.price })
   })
+  Object.values(priceHistory).forEach(p =>
+    p.entries.sort((a, b) => parseDate(a.date) - parseDate(b.date))
+  )
 
   const freqMap = {}
   allItems.forEach(i => { const k = i.productId || i.name; freqMap[k] = (freqMap[k] || 0) + 1 })
@@ -77,6 +122,16 @@ export default function App() {
     (filterCat === 'All' || i.cat === filterCat) &&
     (!itemSearch || i.name.toLowerCase().includes(itemSearch.toLowerCase()))
   )
+
+  const priceChangesCount = (item) =>
+    item.entries.filter((e, i) => i > 0 &&
+      parseUnitPrice(e.unitPrice) !== parseUnitPrice(item.entries[i - 1].unitPrice)
+    ).length
+
+  const filteredPriceHistory = Object.values(priceHistory)
+    .filter(p => p.entries.length > 1)
+    .filter(p => !priceSearch || p.name.toLowerCase().includes(priceSearch.toLowerCase()))
+    .sort((a, b) => priceChangesCount(b) - priceChangesCount(a))
 
   useEffect(() => {
     if (tab !== 'overview') return
@@ -450,29 +505,52 @@ export default function App() {
 
         {tab === 'price history' && (
           <>
-            <p className={styles.sectionHint}>Items bought more than once. Price changes are highlighted.</p>
+            <div className={styles.filterRow}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <i className="ti ti-search" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: 16 }} aria-hidden="true" />
+                <input
+                  placeholder="Search items…"
+                  value={priceSearch}
+                  onChange={e => setPriceSearch(e.target.value)}
+                  style={{ paddingLeft: 34 }}
+                />
+              </div>
+            </div>
+            <p className={styles.sectionHint}>Items bought more than once, sorted by number of price changes.</p>
             <div className={styles.priceList}>
-              {Object.values(priceHistory)
-                .filter(p => p.entries.length > 1)
-                .sort((a, b) => b.entries.length - a.entries.length)
-                .map((item, idx) => (
-                  <div key={idx} className={styles.card}>
+              {filteredPriceHistory.map((item, idx) => (
+                <div key={idx} className={styles.card}>
+                  <div className={styles.priceCardTop}>
                     <p className={styles.priceItemName}>{item.name}</p>
-                    <div className={styles.priceEntries}>
-                      {item.entries.map((e, i) => {
-                        const prev = item.entries[i - 1]
-                        const up = prev && e.unitPrice !== prev.unitPrice
-                        return (
-                          <div key={i} className={`${styles.priceChip} ${up ? styles.priceUp : ''}`}>
-                            <span className={styles.priceDate}>{e.date.split(',')[0]}</span>
-                            <span className={styles.priceVal}>{e.unitPrice}</span>
-                            {up && <i className="ti ti-trending-up" style={{ fontSize: 12, color: 'var(--warning)' }} aria-label="price increased" />}
-                          </div>
-                        )
-                      })}
-                    </div>
+                    <SparkLine entries={item.entries} />
                   </div>
-                ))}
+                  <div className={styles.priceEntries}>
+                    {item.entries.map((e, i) => {
+                      const prev = item.entries[i - 1]
+                      const prevPrice = prev ? parseUnitPrice(prev.unitPrice) : 0
+                      const currPrice = parseUnitPrice(e.unitPrice)
+                      const hasDelta = prev && prevPrice > 0 && currPrice !== prevPrice
+                      const diff = hasDelta ? currPrice - prevPrice : 0
+                      const pct = hasDelta ? Math.round(Math.abs(diff / prevPrice) * 100) : 0
+                      const deltaStr = hasDelta
+                        ? `${diff > 0 ? '+' : '-'}$${Math.abs(diff).toFixed(2)} (${pct}%)`
+                        : null
+                      const isUp = diff > 0
+                      return (
+                        <div key={i} className={`${styles.priceChip} ${hasDelta ? (isUp ? styles.priceUp : styles.priceDown) : ''}`}>
+                          <span className={styles.priceDate}>{e.date.split(',')[0]}</span>
+                          <span className={styles.priceVal}>{e.unitPrice}</span>
+                          {deltaStr && (
+                            <span className={isUp ? styles.priceDeltaUp : styles.priceDeltaDown}>
+                              {deltaStr}
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </>
         )}
