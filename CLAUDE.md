@@ -11,6 +11,10 @@ After every commit/push, append a log entry to the ## Ship Log section of this f
 
 ## Ship Log
 
+### 2026-05-22 (12)
+Applied 18 Maya UI/UX design review fixes across App.jsx, App.module.css, and index.css. Key changes: `button:focus-visible` red outline added globally; cart rows stack to single column on mobile ≤500px; product detail store column hides and grid reflows to 4 columns on mobile ≤480px; image/store placeholders moved to below the purchase history table; cart qty stepper buttons get aria-labels; Price Watch card hidden when watchlist is empty; category trend legend dots removed; chart label is now dynamic ("Spend per order/week/month"); MoM Change box gets a colored left border when non-zero.
+- No known issues.
+
 ### 2026-05-22 (11)
 Completed product detail view. Re-added `prevTab` state — `selectProduct()` now captures the current tab, and Back calls `setTab(prevTab)` so it reliably returns to the originating tab. Low/High hero stats now show the date of that price. Added a gray rounded image placeholder card (ti-photo, "Image coming soon") between the graph and the purchase history table. Replaced the plain multi-store text with a dashed-border card (ti-building-store icon, "Price comparison across stores coming soon").
 - No known issues.

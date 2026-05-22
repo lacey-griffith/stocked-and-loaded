@@ -154,6 +154,7 @@
   cursor: pointer;
   font-weight: 500;
 }
+.activeTab:hover { opacity: 0.88; }
 
 /* Main content */
 .main {
@@ -261,6 +262,7 @@
   padding: 7px 0;
   border-bottom: 1px solid #E5E5E5;
 }
+.repeatItem:last-child { border-bottom: none; }
 
 .repeatName {
   font-size: 13px;
@@ -542,14 +544,14 @@
 .priceDeltaUp {
   font-size: 11px;
   font-family: var(--mono);
-  color: #C12033;
+  color: var(--danger);
   font-weight: 500;
 }
 
 .priceDeltaDown {
   font-size: 11px;
   font-family: var(--mono);
-  color: #065f46;
+  color: var(--success);
   font-weight: 500;
 }
 
@@ -717,7 +719,7 @@
 }
 
 .phHeroLabel {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.4px;
@@ -775,7 +777,7 @@
 }
 
 .phStatLabel {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.4px;
@@ -860,11 +862,11 @@
 }
 
 .insightsDeltaUp {
-  color: #C12033;
+  color: var(--danger);
 }
 
 .insightsDeltaDown {
-  color: #065f46;
+  color: var(--success);
 }
 
 .insightsFooter {
@@ -1129,7 +1131,7 @@
 }
 
 .cartItemSub {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
@@ -1229,7 +1231,8 @@
 .cartTotal {
   padding: 12px 1.25rem;
   text-align: right;
-  font-size: 15px;
+  font-size: 18px;
+  font-weight: 600;
   color: var(--text-primary);
   background: #F5F5F5;
   border-top: 1px solid #E5E5E5;
@@ -1547,12 +1550,12 @@
   align-items: center;
   gap: 12px;
   padding: 10px 16px;
-  border-bottom: 1px solid var(--border);
+  border-top: 1px solid var(--border);
   cursor: pointer;
   transition: background 0.1s;
 }
+.compactRow:first-child { border-top: none; }
 .compactRow:hover { background: var(--bg-app); }
-.compactRow:last-of-type { border-bottom: none; }
 .compactRowOpen { background: var(--bg-app); }
 .compactDate { font-size: 13px; color: var(--text-primary); }
 .compactStore {
@@ -1648,3 +1651,16 @@
 }
 .pdStorePlaceholderCard i { font-size: 28px; }
 .pdStorePlaceholderCard p { margin: 0; }
+
+@media (max-width: 500px) {
+  .cartRow {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .pdTableStore { display: none; }
+  .pdTableHead { grid-template-columns: 1.2fr 0.8fr 1.2fr 1fr; }
+  .pdTableRow { grid-template-columns: 1.2fr 0.8fr 1.2fr 1fr; }
+}

@@ -1029,10 +1029,6 @@ export default function App() {
                 </div>
                 <ProductLineGraph entries={entries} />
               </div>
-              <div className={styles.pdImagePlaceholder}>
-                <i className="ti ti-photo" aria-hidden="true" />
-                <span>Image coming soon</span>
-              </div>
               <div className={styles.card} style={{ padding: 0, overflow: 'hidden' }}>
                 <p className={styles.cardLabel} style={{ padding: '12px 16px 8px' }}>Purchase history</p>
                 <div className={styles.pdTableHead}>
@@ -1061,6 +1057,10 @@ export default function App() {
                     </div>
                   )
                 })}
+              </div>
+              <div className={styles.pdImagePlaceholder}>
+                <i className="ti ti-photo" aria-hidden="true" />
+                <span>Image coming soon</span>
               </div>
               <div className={styles.pdStorePlaceholderCard}>
                 <i className="ti ti-building-store" aria-hidden="true" />
@@ -1103,7 +1103,7 @@ export default function App() {
             <div className={styles.charts}>
               <div className={styles.card}>
                 <div className={styles.chartCardHeader}>
-                  <p className={styles.cardLabel}>Spend over time</p>
+                  <p className={styles.cardLabel}>{chartBucket === 'month' ? 'Spend per month' : chartBucket === 'week' ? 'Spend per week' : 'Spend per order'}</p>
                   <div className={styles.chartBucketToggle}>
                     {[['order','Per order'],['week','Weekly'],['month','Monthly']].map(([val, label]) => (
                       <button key={val} className={`${styles.chartBucketBtn} ${chartBucket === val ? styles.chartBucketBtnActive : ''}`} onClick={() => setChartBucket(val)}>{label}</button>
@@ -1431,6 +1431,7 @@ export default function App() {
                         key={letter}
                         className={`${styles.phAlphaBtn} ${!availableLetters.has(letter) ? styles.phAlphaBtnDisabled : ''}`}
                         disabled={!availableLetters.has(letter)}
+                        title={!availableLetters.has(letter) ? `No items starting with ${letter}` : undefined}
                         onClick={() => phLetterRefs.current[letter]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })}
                       >
                         {letter}
@@ -1473,7 +1474,7 @@ export default function App() {
                     <span className={styles.insightsStatValue}>${insights.prevMonth.toFixed(2)}</span>
                   </div>
                   {insights.momDelta != null && (
-                    <div className={styles.insightsMonthBox}>
+                    <div className={styles.insightsMonthBox} style={insights.momDelta !== 0 ? { borderLeft: `3px solid ${insights.momDelta > 0 ? '#E1251B' : '#2B8562'}`, paddingLeft: 12 } : {}}>
                       <span className={styles.insightsStatLabel}>Change</span>
                       <span className={`${styles.insightsStatValue} ${insights.momDelta > 0 ? styles.insightsDeltaUp : insights.momDelta < 0 ? styles.insightsDeltaDown : styles.insightsDeltaFlat}`}>
                         {insights.momDelta === 0
@@ -1524,7 +1525,6 @@ export default function App() {
                     const pct = Math.min(100, Math.abs(c.growth / Math.max(c.prev, 0.01)) * 100)
                     return (
                       <div key={c.cat} className={styles.insightsCatRow}>
-                        <span className={styles.legendDot} style={{ background: CAT_COLORS[c.cat] || '#888' }} />
                         <span className={styles.insightsCatName}>{c.cat}</span>
                         <span className={styles.insightsCatBar}>
                           <span className={styles.insightsCatBarFill} style={{ width: `${pct}%`, background: c.growth > 0 ? '#FCCACA' : '#B7E4CC' }} />
@@ -1601,9 +1601,9 @@ export default function App() {
                       </div>
                       <span className={styles.cartItemPrice}>{unitPrice > 0 ? `$${unitPrice.toFixed(2)}` : '—'}</span>
                       <div className={styles.cartQtyStepper}>
-                        <button className={styles.cartQtyBtn} onClick={() => updateCartQty(item.key, -1)}>−</button>
+                        <button className={styles.cartQtyBtn} aria-label={`Decrease quantity of ${item.name}`} onClick={() => updateCartQty(item.key, -1)}>−</button>
                         <span className={styles.cartQtyVal}>{item.qty}</span>
-                        <button className={styles.cartQtyBtn} onClick={() => updateCartQty(item.key, 1)}>+</button>
+                        <button className={styles.cartQtyBtn} aria-label={`Increase quantity of ${item.name}`} onClick={() => updateCartQty(item.key, 1)}>+</button>
                       </div>
                       <span className={styles.cartSubtotal}>{subtotal > 0 ? `$${subtotal.toFixed(2)}` : '—'}</span>
                       <button
@@ -1626,12 +1626,10 @@ export default function App() {
               </div>
             )}
 
+            {watchlist.length > 0 && (
             <div className={styles.card}>
               <p className={styles.cardLabel}>Price watch</p>
-              {watchlist.length === 0 ? (
-                <p className={styles.moreHint}>Hit the bell icon on any cart item to watch its price</p>
-              ) : (
-                watchlist.map(watched => {
+              {watchlist.map(watched => {
                   const entries = priceHistory[watched.key]?.entries || []
                   const currentPrice = parseUnitPrice(entries[entries.length - 1]?.unitPrice)
                   const target = parseFloat(watched.targetPrice) || 0
@@ -1665,9 +1663,9 @@ export default function App() {
                       </button>
                     </div>
                   )
-                })
-              )}
+                })}
             </div>
+            )}
           </>
         )}
       </main>
