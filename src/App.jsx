@@ -80,7 +80,35 @@ function inRange(dateStr, bounds) {
   return d >= bounds.from && d <= bounds.to
 }
 
-function SparkLine({ entries }) {
+function PriceChips({ entries }) {
+  return (
+    <div className={styles.priceEntries}>
+      {entries.map((e, i) => {
+        const prev = entries[i - 1]
+        const prevPrice = prev ? parseUnitPrice(prev.unitPrice) : 0
+        const currPrice = parseUnitPrice(e.unitPrice)
+        const hasDelta = prev && prevPrice > 0 && currPrice !== prevPrice
+        const diff = hasDelta ? currPrice - prevPrice : 0
+        const pct = hasDelta ? Math.round(Math.abs(diff / prevPrice) * 100) : 0
+        const deltaStr = hasDelta
+          ? `${diff > 0 ? '+' : '-'}$${Math.abs(diff).toFixed(2)} (${pct}%)`
+          : null
+        const isUp = diff > 0
+        return (
+          <div key={i} className={`${styles.priceChip} ${hasDelta ? (isUp ? styles.priceUp : styles.priceDown) : ''}`}>
+            <span className={styles.priceDate}>{e.date.split(',')[0]}</span>
+            <span className={styles.priceVal}>{e.unitPrice}</span>
+            {deltaStr && (
+              <span className={isUp ? styles.priceDeltaUp : styles.priceDeltaDown}>{deltaStr}</span>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function PriceLineGraph({ entries }) {
   const canvasRef = useRef(null)
   const chartRef = useRef(null)
 
@@ -88,31 +116,113 @@ function SparkLine({ entries }) {
     if (!canvasRef.current || entries.length < 2) return
     chartRef.current?.destroy()
     const prices = entries.map(e => parseUnitPrice(e.unitPrice))
+    const n = prices.length
     chartRef.current = new Chart(canvasRef.current, {
       type: 'line',
       data: {
-        labels: entries.map((_, i) => i),
+        labels: entries.map(e => e.date.split(',')[0]),
         datasets: [{
           data: prices,
-          borderColor: '#2B8562',
+          borderColor: '#E1251B',
           borderWidth: 2,
-          pointRadius: 0,
+          pointRadius: prices.map((_, i) => i === n - 1 ? 4 : 0),
+          pointBackgroundColor: prices.map((_, i) => i === n - 1 ? '#E1251B' : 'transparent'),
+          pointBorderColor: prices.map((_, i) => i === n - 1 ? '#FFFFFF' : 'transparent'),
+          pointBorderWidth: 2,
           tension: 0.3,
           fill: false,
         }]
       },
       options: {
-        responsive: false,
+        responsive: true,
+        maintainAspectRatio: false,
         animation: false,
         plugins: { legend: { display: false }, tooltip: { enabled: false } },
         scales: { x: { display: false }, y: { display: false } },
+        layout: { padding: { top: 10, bottom: 4, left: 2, right: 8 } },
       }
     })
     return () => { chartRef.current?.destroy() }
   }, [entries])
 
   if (entries.length < 2) return null
-  return <canvas ref={canvasRef} width={120} height={48} style={{ display: 'block' }} />
+  return (
+    <div style={{ position: 'relative', height: 90, marginBottom: 4 }}>
+      <canvas ref={canvasRef} />
+    </div>
+  )
+}
+
+function PriceHistoryCard({ item }) {
+  const [view, setView] = useState('graph')
+  const { entries } = item
+  const firstPrice = parseUnitPrice(entries[0]?.unitPrice)
+  const lastEntry = entries[entries.length - 1]
+  const lastPrice = parseUnitPrice(lastEntry?.unitPrice)
+  const totalDiff = lastPrice - firstPrice
+  const totalPct = firstPrice > 0 ? Math.round(Math.abs(totalDiff / firstPrice) * 100) : 0
+  const totalDeltaStr = firstPrice > 0 && totalDiff !== 0
+    ? `${totalDiff > 0 ? '+' : '-'}$${Math.abs(totalDiff).toFixed(2)} (${totalPct}%)`
+    : null
+  const isTotalUp = totalDiff > 0
+  const prices = entries.map(e => parseUnitPrice(e.unitPrice))
+  const minPrice = Math.min(...prices)
+  const maxPrice = Math.max(...prices)
+  const minEntry = entries.find(e => parseUnitPrice(e.unitPrice) === minPrice)
+  const maxEntry = entries.find(e => parseUnitPrice(e.unitPrice) === maxPrice)
+
+  return (
+    <div className={styles.card}>
+      <div className={styles.phCardTop}>
+        <p className={styles.priceItemName}>{item.name}</p>
+        <div className={styles.phViewToggle}>
+          <button
+            className={`${styles.phToggleBtn} ${view === 'graph' ? styles.phToggleBtnActive : ''}`}
+            onClick={() => setView('graph')}
+          >Graph</button>
+          <button
+            className={`${styles.phToggleBtn} ${view === 'chips' ? styles.phToggleBtnActive : ''}`}
+            onClick={() => setView('chips')}
+          >Chips</button>
+        </div>
+      </div>
+      {view === 'graph' && (
+        <>
+          <div className={styles.phHeroRow}>
+            <div className={styles.phHeroCurrent}>
+              <span className={styles.phHeroLabel}>Current</span>
+              <span className={styles.phHeroValue}>{lastEntry?.unitPrice}</span>
+            </div>
+            {totalDeltaStr && (
+              <span className={`${styles.phDeltaChip} ${isTotalUp ? styles.phDeltaUp : styles.phDeltaDown}`}>
+                {totalDeltaStr}
+              </span>
+            )}
+            <div className={styles.phHeroStat}>
+              <span className={styles.phHeroLabel}>Bought</span>
+              <span className={styles.phHeroCount}>×{entries.length}</span>
+            </div>
+            <div className={styles.phStatBox}>
+              <span className={styles.phStatLabel}>Low</span>
+              <span className={styles.phStatValue}>${minPrice.toFixed(2)}</span>
+              <span className={styles.phStatDate}>{minEntry?.date.split(',')[0]}</span>
+            </div>
+            <div className={styles.phStatBox}>
+              <span className={styles.phStatLabel}>High</span>
+              <span className={styles.phStatValue}>${maxPrice.toFixed(2)}</span>
+              <span className={styles.phStatDate}>{maxEntry?.date.split(',')[0]}</span>
+            </div>
+          </div>
+          <PriceLineGraph entries={entries} />
+          <details className={styles.phDetails}>
+            <summary className={styles.phDetailsSummary}>Show all {entries.length} entries</summary>
+            <PriceChips entries={entries} />
+          </details>
+        </>
+      )}
+      {view === 'chips' && <PriceChips entries={entries} />}
+    </div>
+  )
 }
 
 export default function App() {
@@ -806,37 +916,7 @@ export default function App() {
             <p className={styles.sectionHint}>Items bought more than once, sorted by number of price changes.</p>
             <div className={styles.priceList}>
               {filteredPriceHistory.map((item, idx) => (
-                <div key={idx} className={styles.card}>
-                  <div className={styles.priceCardTop}>
-                    <p className={styles.priceItemName}>{item.name}</p>
-                    <SparkLine entries={item.entries} />
-                  </div>
-                  <div className={styles.priceEntries}>
-                    {item.entries.map((e, i) => {
-                      const prev = item.entries[i - 1]
-                      const prevPrice = prev ? parseUnitPrice(prev.unitPrice) : 0
-                      const currPrice = parseUnitPrice(e.unitPrice)
-                      const hasDelta = prev && prevPrice > 0 && currPrice !== prevPrice
-                      const diff = hasDelta ? currPrice - prevPrice : 0
-                      const pct = hasDelta ? Math.round(Math.abs(diff / prevPrice) * 100) : 0
-                      const deltaStr = hasDelta
-                        ? `${diff > 0 ? '+' : '-'}$${Math.abs(diff).toFixed(2)} (${pct}%)`
-                        : null
-                      const isUp = diff > 0
-                      return (
-                        <div key={i} className={`${styles.priceChip} ${hasDelta ? (isUp ? styles.priceUp : styles.priceDown) : ''}`}>
-                          <span className={styles.priceDate}>{e.date.split(',')[0]}</span>
-                          <span className={styles.priceVal}>{e.unitPrice}</span>
-                          {deltaStr && (
-                            <span className={isUp ? styles.priceDeltaUp : styles.priceDeltaDown}>
-                              {deltaStr}
-                            </span>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
+                <PriceHistoryCard key={idx} item={item} />
               ))}
             </div>
           </>
