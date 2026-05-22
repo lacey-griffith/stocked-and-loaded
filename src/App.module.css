@@ -1108,10 +1108,10 @@
   grid-template-columns: 1fr 64px auto 64px 30px 30px;
   gap: 0 10px;
   padding: 12px 1.25rem;
-  border-bottom: 1px solid #E5E5E5;
+  border-top: 1px solid #E5E5E5;
   align-items: center;
 }
-.cartRow:last-of-type { border-bottom: none; }
+.cartRow:first-child { border-top: none; }
 
 .cartItemInfo {
   display: flex;

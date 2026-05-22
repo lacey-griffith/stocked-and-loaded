@@ -433,6 +433,7 @@ export default function App() {
   useEffect(() => {
     setDrilldownOrder(null)
     setDrilldownCat(null)
+    setCartSearch('')
   }, [tab])
 
   useEffect(() => {
@@ -458,7 +459,7 @@ export default function App() {
 
   function updateCartQty(key, delta) {
     setCart(prev =>
-      prev.map(i => i.key === key ? { ...i, qty: i.qty + delta } : i).filter(i => i.qty > 0)
+      prev.map(i => i.key === key ? { ...i, qty: Math.max(1, i.qty + delta) } : i)
     )
   }
 
@@ -493,7 +494,7 @@ export default function App() {
     })
   )
 
-  const insights = useMemo(() => computeInsights(orders, allItems), [orders])
+  const insights = useMemo(() => computeInsights(orders, allItems), [orders, catOverrides])
 
   // Time-filtered views for orders + items tabs
   const bounds = getDateBounds(timeRange, customFrom, customTo, timeRangeMonth)
@@ -1356,6 +1357,7 @@ export default function App() {
                           value={watched.targetPrice}
                           min="0"
                           step="0.01"
+                          placeholder="0.00"
                           onChange={e => updateWatchTarget(watched.key, e.target.value)}
                         />
                       </div>
