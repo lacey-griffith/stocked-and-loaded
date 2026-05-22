@@ -46,6 +46,23 @@ function loadTimeRangePrefs() {
   }
 }
 
+const CART_KEY = 'stocked_loaded_cart_v1'
+const WATCHLIST_KEY = 'stocked_loaded_watchlist_v1'
+
+function loadCart() {
+  try {
+    const saved = localStorage.getItem(CART_KEY)
+    return saved ? JSON.parse(saved) : []
+  } catch { return [] }
+}
+
+function loadWatchlist() {
+  try {
+    const saved = localStorage.getItem(WATCHLIST_KEY)
+    return saved ? JSON.parse(saved) : []
+  } catch { return [] }
+}
+
 function parseDate(str) {
   return new Date(str.replace(/–.*/, '').trim())
 }
@@ -394,6 +411,9 @@ export default function App() {
   const [customTo, setCustomTo] = useState(initPrefs.to)
   const [drilldownOrder, setDrilldownOrder] = useState(null)
   const [drilldownCat, setDrilldownCat] = useState(null)
+  const [cart, setCart] = useState(loadCart)
+  const [watchlist, setWatchlist] = useState(loadWatchlist)
+  const [cartSearch, setCartSearch] = useState('')
 
   useEffect(() => { saveOrders(orders) }, [orders])
 
@@ -414,6 +434,48 @@ export default function App() {
     setDrilldownOrder(null)
     setDrilldownCat(null)
   }, [tab])
+
+  useEffect(() => {
+    try { localStorage.setItem(CART_KEY, JSON.stringify(cart)) } catch {}
+  }, [cart])
+
+  useEffect(() => {
+    try { localStorage.setItem(WATCHLIST_KEY, JSON.stringify(watchlist)) } catch {}
+  }, [watchlist])
+
+  function addToCart(key, name) {
+    setCart(prev => {
+      const existing = prev.find(i => i.key === key)
+      if (existing) return prev.map(i => i.key === key ? { ...i, qty: i.qty + 1 } : i)
+      return [...prev, { key, name, qty: 1 }]
+    })
+    setCartSearch('')
+  }
+
+  function removeFromCart(key) {
+    setCart(prev => prev.filter(i => i.key !== key))
+  }
+
+  function updateCartQty(key, delta) {
+    setCart(prev =>
+      prev.map(i => i.key === key ? { ...i, qty: i.qty + delta } : i).filter(i => i.qty > 0)
+    )
+  }
+
+  function addToWatchlist(key, name, targetPrice) {
+    setWatchlist(prev => {
+      if (prev.find(w => w.key === key)) return prev
+      return [...prev, { key, name, targetPrice: targetPrice > 0 ? targetPrice.toFixed(2) : '' }]
+    })
+  }
+
+  function removeFromWatchlist(key) {
+    setWatchlist(prev => prev.filter(w => w.key !== key))
+  }
+
+  function updateWatchTarget(key, val) {
+    setWatchlist(prev => prev.map(w => w.key === key ? { ...w, targetPrice: val } : w))
+  }
 
   function setCatOverride(key, cat) {
     setCatOverrides(prev => {
@@ -470,6 +532,27 @@ export default function App() {
     .map(([k, count]) => ({ ...priceHistory[k], k, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 12)
+
+  const cartSearchResults = cartSearch.trim()
+    ? Object.entries(priceHistory)
+        .filter(([, v]) => v.name.toLowerCase().includes(cartSearch.toLowerCase().trim()))
+        .filter(([k]) => !cart.find(c => c.key === k))
+        .slice(0, 8)
+        .map(([k, v]) => ({ key: k, name: v.name }))
+    : []
+
+  const cartTotal = cart.reduce((sum, item) => {
+    const entries = priceHistory[item.key]?.entries || []
+    const unitPrice = parseUnitPrice(entries[entries.length - 1]?.unitPrice)
+    return sum + unitPrice * item.qty
+  }, 0)
+
+  const watchlistHits = watchlist.filter(w => {
+    const entries = priceHistory[w.key]?.entries || []
+    const current = parseUnitPrice(entries[entries.length - 1]?.unitPrice)
+    const target = parseFloat(w.targetPrice) || 0
+    return current > 0 && target > 0 && current <= target
+  })
 
   const overviewOrders = [...timeFilteredOrders].sort((a, b) => parseDate(a.date) - parseDate(b.date))
   const cats = ['All', ...Object.keys(catTotals).sort()]
@@ -754,13 +837,14 @@ export default function App() {
       )}
 
       <nav className={styles.tabs}>
-        {['overview', 'orders', 'items', 'price history', 'insights'].map(t => (
+        {['overview', 'cart', 'orders', 'items', 'price history', 'insights'].map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={tab === t ? styles.activeTab : styles.tab}
           >
             {t === 'overview' && <i className="ti ti-layout-dashboard" aria-hidden="true" />}
+            {t === 'cart' && <i className="ti ti-shopping-cart-plus" aria-hidden="true" />}
             {t === 'orders' && <i className="ti ti-shopping-cart" aria-hidden="true" />}
             {t === 'items' && <i className="ti ti-list" aria-hidden="true" />}
             {t === 'price history' && <i className="ti ti-chart-line" aria-hidden="true" />}
@@ -905,6 +989,12 @@ export default function App() {
                   <span className={styles.insightsStatValue}>{insights.priceChanges}</span>
                 </div>
               </div>
+              {watchlistHits.length > 0 && (
+                <div className={styles.insightsHitCallout}>
+                  <i className="ti ti-check" aria-hidden="true" />
+                  {watchlistHits.length} item{watchlistHits.length !== 1 ? 's' : ''} hit your price target
+                </div>
+              )}
               <div className={styles.insightsFooter}>
                 <span className={styles.insightsFooterNote}>
                   {insights.biggestJump && `↑ ${shortName(insights.biggestJump.name)} +$${insights.biggestJump.diff.toFixed(2)} (${insights.biggestJump.pct}%)`}
@@ -1158,6 +1248,132 @@ export default function App() {
             </>
           )
         })()}
+
+        {tab === 'cart' && (
+          <>
+            <div className={styles.filterRow}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <i className="ti ti-search" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: 16 }} aria-hidden="true" />
+                <input
+                  placeholder="Search items to add…"
+                  value={cartSearch}
+                  onChange={e => setCartSearch(e.target.value)}
+                  style={{ paddingLeft: 34 }}
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+
+            {cartSearchResults.length > 0 && (
+              <div className={styles.cartSearchResults}>
+                {cartSearchResults.map(item => {
+                  const entries = priceHistory[item.key]?.entries || []
+                  const lastPrice = parseUnitPrice(entries[entries.length - 1]?.unitPrice)
+                  return (
+                    <button key={item.key} className={styles.cartSearchItem} onClick={() => addToCart(item.key, item.name)}>
+                      <span className={styles.cartSearchName}>{item.name}</span>
+                      <span className={styles.cartSearchPrice}>{lastPrice > 0 ? `$${lastPrice.toFixed(2)}` : '—'}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {cart.length === 0 ? (
+              <div className={`${styles.card} ${styles.cartEmpty}`}>
+                <i className="ti ti-shopping-cart-plus" style={{ fontSize: 32, color: 'var(--text-muted)' }} aria-hidden="true" />
+                <p>Search for items above to build your cart</p>
+              </div>
+            ) : (
+              <div className={styles.card} style={{ padding: 0, overflow: 'hidden' }}>
+                {cart.map(item => {
+                  const entries = priceHistory[item.key]?.entries || []
+                  const lastEntry = entries[entries.length - 1]
+                  const unitPrice = parseUnitPrice(lastEntry?.unitPrice)
+                  const subtotal = unitPrice * item.qty
+                  const lastDate = lastEntry?.date || ''
+                  const ph = priceHistory[item.key]
+                  const changes = ph ? priceChangesCount(ph) : 0
+                  const isWatched = !!watchlist.find(w => w.key === item.key)
+                  return (
+                    <div key={item.key} className={styles.cartRow}>
+                      <div className={styles.cartItemInfo}>
+                        <span className={styles.cartItemName}>{item.name}</span>
+                        <span className={styles.cartItemSub}>
+                          {lastDate ? `Last bought ${lastDate.split(',')[0]}` : 'No history'}
+                          {changes > 0 && ` · ${changes} price change${changes !== 1 ? 's' : ''}`}
+                        </span>
+                      </div>
+                      <span className={styles.cartItemPrice}>{unitPrice > 0 ? `$${unitPrice.toFixed(2)}` : '—'}</span>
+                      <div className={styles.cartQtyStepper}>
+                        <button className={styles.cartQtyBtn} onClick={() => updateCartQty(item.key, -1)}>−</button>
+                        <span className={styles.cartQtyVal}>{item.qty}</span>
+                        <button className={styles.cartQtyBtn} onClick={() => updateCartQty(item.key, 1)}>+</button>
+                      </div>
+                      <span className={styles.cartSubtotal}>{subtotal > 0 ? `$${subtotal.toFixed(2)}` : '—'}</span>
+                      <button
+                        className={`${styles.cartWatchBtn} ${isWatched ? styles.cartWatchBtnActive : ''}`}
+                        title={isWatched ? 'Already watching' : 'Watch this price'}
+                        onClick={() => addToWatchlist(item.key, item.name, unitPrice)}
+                        disabled={isWatched}
+                      >
+                        <i className="ti ti-bell" aria-hidden="true" />
+                      </button>
+                      <button className={styles.cartRemoveBtn} onClick={() => removeFromCart(item.key)}>
+                        <i className="ti ti-x" aria-hidden="true" />
+                      </button>
+                    </div>
+                  )
+                })}
+                <div className={styles.cartTotal}>
+                  Estimated total: <strong>${cartTotal.toFixed(2)}</strong>
+                </div>
+              </div>
+            )}
+
+            <div className={styles.card}>
+              <p className={styles.cardLabel}>Price watch</p>
+              {watchlist.length === 0 ? (
+                <p className={styles.moreHint}>Hit the bell icon on any cart item to watch its price</p>
+              ) : (
+                watchlist.map(watched => {
+                  const entries = priceHistory[watched.key]?.entries || []
+                  const currentPrice = parseUnitPrice(entries[entries.length - 1]?.unitPrice)
+                  const target = parseFloat(watched.targetPrice) || 0
+                  const hasData = currentPrice > 0
+                  const hitTarget = hasData && target > 0 && currentPrice <= target
+                  const chipClass = !hasData ? styles.watchChipGray : hitTarget ? styles.watchChipGreen : styles.watchChipRed
+                  const chipLabel = !hasData ? 'No data' : hitTarget ? 'At or below target' : 'Above target'
+                  return (
+                    <div key={watched.key} className={styles.watchRow}>
+                      <span className={styles.watchName} title={watched.name}>{shortName(watched.name)}</span>
+                      <div className={styles.watchPriceGroup}>
+                        <span className={styles.watchLabel}>Target</span>
+                        <span className={styles.watchCurrency}>$</span>
+                        <input
+                          type="number"
+                          className={styles.watchTargetInput}
+                          value={watched.targetPrice}
+                          min="0"
+                          step="0.01"
+                          onChange={e => updateWatchTarget(watched.key, e.target.value)}
+                        />
+                      </div>
+                      <div className={styles.watchPriceGroup}>
+                        <span className={styles.watchLabel}>Current</span>
+                        <span className={styles.watchCurrentPrice}>{hasData ? `$${currentPrice.toFixed(2)}` : '—'}</span>
+                      </div>
+                      <span className={chipClass}>{chipLabel}</span>
+                      <button className={styles.cartRemoveBtn} onClick={() => removeFromWatchlist(watched.key)}>
+                        <i className="ti ti-x" aria-hidden="true" />
+                      </button>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </>
+        )}
       </main>
     </div>
   )
