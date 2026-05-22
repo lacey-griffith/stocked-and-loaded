@@ -11,6 +11,14 @@ After every commit/push, append a log entry to the ## Ship Log section of this f
 
 ## Ship Log
 
+### 2026-05-22 (7)
+Applied 5 Sprint 4 audit fixes. `cartRow` border switched to `border-top/:first-child` to eliminate the double border between the last cart item and the total strip. `updateCartQty` now clamps at 1 (`Math.max`) so the − button never silently deletes — the explicit × is the only delete path. `cartSearch` cleared in the `[tab]` effect so the search dropdown doesn't reappear when returning to the cart tab. `useMemo` dep array for `computeInsights` expanded to `[orders, catOverrides]`. Watchlist target input gets `placeholder="0.00"`.
+- No known issues.
+
+### 2026-05-22 (6)
+Added cart estimator and price alerts (Sprint 4). Cart tab (`ti-shopping-cart-plus`) lets you search price history items, add them with a qty stepper, and see a running estimated total. Each row shows last-bought date and price-change count. A bell button pre-fills a watch target with the current price and adds the item to a "Price watch" section below the cart, which shows editable target price, current price, and a green/red/gray status chip. If any watched items are at or below target, a green callout appears in the overview insights card. Both cart and watchlist persist to localStorage.
+- No known issues.
+
 ### 2026-05-22 (5)
 Applied 10 Jenny/Karen audit fixes to the Insights feature. Key fixes: price movers now compare the last two purchases (not first-to-last) so intermediate price swings register correctly; `momDelta === 0` renders "No change" in gray instead of falling through to green; `categoryTrend` wired into the category trends card as a "Biggest shift" callout; overview insights card labeled "· current month" to distinguish it from filtered metrics; `computeInsights` wrapped in `useMemo([orders])`; explicit +/- signs on all delta values; CSS border fix and category name overflow truncation.
 - No known issues.
