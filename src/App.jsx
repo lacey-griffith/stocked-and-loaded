@@ -471,6 +471,7 @@ export default function App() {
   const [drilldownOrder, setDrilldownOrder] = useState(null)
   const [drilldownCat, setDrilldownCat] = useState(null)
   const [selectedProduct, setSelectedProduct] = useState(null)
+  const [prevTab, setPrevTab] = useState('overview')
   const [cart, setCart] = useState(loadCart)
   const [watchlist, setWatchlist] = useState(loadWatchlist)
   const [cartSearch, setCartSearch] = useState('')
@@ -870,6 +871,7 @@ export default function App() {
   }
 
   function selectProduct(key) {
+    setPrevTab(tab)
     setSelectedProduct(key)
   }
 
@@ -964,7 +966,7 @@ export default function App() {
           const ph = priceHistory[selectedProduct]
           if (!ph) return (
             <>
-              <button className={styles.pdBack} onClick={() => setSelectedProduct(null)}>
+              <button className={styles.pdBack} onClick={() => { setTab(prevTab); setSelectedProduct(null) }}>
                 <i className="ti ti-arrow-left" aria-hidden="true" /> Back
               </button>
               <p className={styles.moreHint}>Item not found.</p>
@@ -988,10 +990,12 @@ export default function App() {
           const prices = entries.map(e => parseUnitPrice(e.unitPrice))
           const minPrice = Math.min(...prices)
           const maxPrice = Math.max(...prices)
+          const minEntry = entries.findLast(e => parseUnitPrice(e.unitPrice) === minPrice)
+          const maxEntry = entries.findLast(e => parseUnitPrice(e.unitPrice) === maxPrice)
           const cat = catOverrides[selectedProduct] || categorize(name)
           return (
             <>
-              <button className={styles.pdBack} onClick={() => setSelectedProduct(null)}>
+              <button className={styles.pdBack} onClick={() => { setTab(prevTab); setSelectedProduct(null) }}>
                 <i className="ti ti-arrow-left" aria-hidden="true" /> Back
               </button>
               <div className={styles.pdHeader}>
@@ -1015,13 +1019,19 @@ export default function App() {
                   <div className={styles.pdHeroStat}>
                     <span className={styles.pdHeroLabel}>Low</span>
                     <span className={styles.pdHeroValue}>${minPrice.toFixed(2)}</span>
+                    {minEntry && <span className={styles.pdHeroDate}>{minEntry.date.split(',')[0]}</span>}
                   </div>
                   <div className={styles.pdHeroStat}>
                     <span className={styles.pdHeroLabel}>High</span>
                     <span className={styles.pdHeroValue}>${maxPrice.toFixed(2)}</span>
+                    {maxEntry && <span className={styles.pdHeroDate}>{maxEntry.date.split(',')[0]}</span>}
                   </div>
                 </div>
                 <ProductLineGraph entries={entries} />
+              </div>
+              <div className={styles.pdImagePlaceholder}>
+                <i className="ti ti-photo" aria-hidden="true" />
+                <span>Image coming soon</span>
               </div>
               <div className={styles.card} style={{ padding: 0, overflow: 'hidden' }}>
                 <p className={styles.cardLabel} style={{ padding: '12px 16px 8px' }}>Purchase history</p>
@@ -1052,9 +1062,9 @@ export default function App() {
                   )
                 })}
               </div>
-              <div className={styles.card}>
-                <p className={styles.cardLabel}>Multi-store comparison</p>
-                <p className={styles.pdStorePlaceholder}>Store comparison coming soon — connect a second store to unlock.</p>
+              <div className={styles.pdStorePlaceholderCard}>
+                <i className="ti ti-building-store" aria-hidden="true" />
+                <p>Price comparison across stores coming soon</p>
               </div>
             </>
           )
