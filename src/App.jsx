@@ -128,7 +128,7 @@ function computeInsights(orders, allItems) {
   })
 
   const allChanges = []
-  Object.values(priceMapByKey).forEach(({ name, entries }) => {
+  Object.entries(priceMapByKey).forEach(([k, { name, entries }]) => {
     if (entries.length < 2) return
     entries.sort((a, b) => parseDate(a.date) - parseDate(b.date))
     const prev = parseUnitPrice(entries[entries.length - 2].unitPrice)
@@ -137,7 +137,7 @@ function computeInsights(orders, allItems) {
     const diff = last - prev
     if (Math.abs(diff) < 0.01) return
     const pct = Math.round(Math.abs(diff / prev) * 100)
-    allChanges.push({ name, diff, pct, prev, last })
+    allChanges.push({ key: k, name, diff, pct, prev, last })
   })
 
   const priceChanges = allChanges.length
@@ -239,7 +239,64 @@ function PriceLineGraph({ entries }) {
   )
 }
 
-function PriceHistoryCard({ item }) {
+function ProductLineGraph({ entries }) {
+  const canvasRef = useRef(null)
+  const chartRef = useRef(null)
+
+  useEffect(() => {
+    if (!canvasRef.current || entries.length < 2) return
+    chartRef.current?.destroy()
+    const prices = entries.map(e => parseUnitPrice(e.unitPrice))
+    const n = prices.length
+    chartRef.current = new Chart(canvasRef.current, {
+      type: 'line',
+      data: {
+        labels: entries.map(e => e.date.split(',')[0]),
+        datasets: [{
+          data: prices,
+          borderColor: '#E1251B',
+          borderWidth: 2,
+          pointRadius: prices.map((_, i) => i === n - 1 ? 6 : 3),
+          pointBackgroundColor: '#E1251B',
+          pointBorderColor: prices.map((_, i) => i === n - 1 ? '#FFFFFF' : 'transparent'),
+          pointBorderWidth: prices.map((_, i) => i === n - 1 ? 2 : 0),
+          tension: 0.3,
+          fill: false,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: {
+          x: {
+            display: true,
+            ticks: { maxRotation: 35, font: { size: 10, family: 'DM Sans' }, autoSkip: true, maxTicksLimit: 8 },
+            grid: { display: false },
+          },
+          y: {
+            display: true,
+            ticks: { callback: v => '$' + v.toFixed(2), font: { size: 10, family: 'DM Sans' } },
+            grid: { color: 'rgba(128,128,128,0.08)' },
+            border: { dash: [4, 4] },
+          },
+        },
+        layout: { padding: { top: 10, bottom: 4, left: 2, right: 8 } },
+      }
+    })
+    return () => { chartRef.current?.destroy() }
+  }, [entries])
+
+  if (entries.length < 2) return null
+  return (
+    <div style={{ position: 'relative', height: 200, marginBottom: 4 }}>
+      <canvas ref={canvasRef} />
+    </div>
+  )
+}
+
+function PriceHistoryCard({ item, onSelect }) {
   const [view, setView] = useState('graph')
   const { entries } = item
   const firstPrice = parseUnitPrice(entries[0]?.unitPrice)
@@ -260,7 +317,7 @@ function PriceHistoryCard({ item }) {
   return (
     <div className={styles.card}>
       <div className={styles.phCardTop}>
-        <p className={styles.priceItemName}>{item.name}</p>
+        <button className={styles.pdNameLink} onClick={() => onSelect && onSelect(item.key || item.name)}>{item.name}</button>
         <div className={styles.phViewToggle}>
           <button
             className={`${styles.phToggleBtn} ${view === 'graph' ? styles.phToggleBtnActive : ''}`}
@@ -411,6 +468,8 @@ export default function App() {
   const [customTo, setCustomTo] = useState(initPrefs.to)
   const [drilldownOrder, setDrilldownOrder] = useState(null)
   const [drilldownCat, setDrilldownCat] = useState(null)
+  const [selectedProduct, setSelectedProduct] = useState(null)
+  const [prevTab, setPrevTab] = useState('overview')
   const [cart, setCart] = useState(loadCart)
   const [watchlist, setWatchlist] = useState(loadWatchlist)
   const [cartSearch, setCartSearch] = useState('')
@@ -434,6 +493,7 @@ export default function App() {
     setDrilldownOrder(null)
     setDrilldownCat(null)
     setCartSearch('')
+    setSelectedProduct(null)
   }, [tab])
 
   useEffect(() => {
@@ -564,7 +624,7 @@ export default function App() {
           .filter(i => i.cat === drilldownCat)
           .reduce((acc, i) => {
             const k = i.productId || i.name
-            if (!acc[k]) acc[k] = { name: i.name, count: 0, lastPrice: 0, lastDate: '', totalSpend: 0 }
+            if (!acc[k]) acc[k] = { key: k, name: i.name, count: 0, lastPrice: 0, lastDate: '', totalSpend: 0 }
             acc[k].count++
             acc[k].totalSpend += parseUnitPrice(i.unitPrice) * (parseInt(i.quantity) || 1)
             if (!acc[k].lastDate || parseDate(i.orderDate) > parseDate(acc[k].lastDate)) {
@@ -604,10 +664,11 @@ export default function App() {
       parseUnitPrice(e.unitPrice) !== parseUnitPrice(item.entries[i - 1].unitPrice)
     ).length
 
-  const filteredPriceHistory = Object.values(priceHistory)
-    .filter(p => p.entries.length > 1)
-    .filter(p => !priceSearch || p.name.toLowerCase().includes(priceSearch.toLowerCase()))
-    .sort((a, b) => priceChangesCount(b) - priceChangesCount(a))
+  const filteredPriceHistory = Object.entries(priceHistory)
+    .filter(([, p]) => p.entries.length > 1)
+    .filter(([, p]) => !priceSearch || p.name.toLowerCase().includes(priceSearch.toLowerCase()))
+    .sort(([, a], [, b]) => priceChangesCount(b) - priceChangesCount(a))
+    .map(([k, p]) => ({ ...p, key: k }))
 
   useEffect(() => {
     if (tab !== 'overview') return
@@ -769,6 +830,11 @@ export default function App() {
     setManItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: val } : item))
   }
 
+  function selectProduct(key) {
+    setPrevTab(tab)
+    setSelectedProduct(key)
+  }
+
   const shortName = name => name?.replace(/, \d+(\.\d+)?\s*(oz|lb|lbs|ct|L|ml|g|pk).*/i, '').replace(/^H-E-B /i, '').replace(/^Hill Country Fare /i, '')
 
   return (
@@ -856,7 +922,100 @@ export default function App() {
       </nav>
 
       <main className={styles.main}>
-        {tab === 'overview' && (
+        {selectedProduct && (() => {
+          const ph = priceHistory[selectedProduct]
+          if (!ph) return null
+          const { name, entries } = ph
+          const richHistory = allItems
+            .filter(i => (i.productId || i.name) === selectedProduct)
+            .sort((a, b) => parseDate(a.orderDate) - parseDate(b.orderDate))
+            .map(i => ({ ...i, store: orders.find(o => o.orderId === i.orderId)?.header || 'HEB' }))
+          const lastEntry = entries[entries.length - 1]
+          const firstEntry = entries[0]
+          const lastPrice = parseUnitPrice(lastEntry?.unitPrice)
+          const firstPrice = parseUnitPrice(firstEntry?.unitPrice)
+          const totalDiff = lastPrice - firstPrice
+          const totalPct = firstPrice > 0 ? Math.round(Math.abs(totalDiff / firstPrice) * 100) : 0
+          const totalDeltaStr = firstPrice > 0 && Math.abs(totalDiff) >= 0.01
+            ? `${totalDiff > 0 ? '+' : '-'}$${Math.abs(totalDiff).toFixed(2)} (${totalPct}%)`
+            : null
+          const isTotalUp = totalDiff > 0
+          const prices = entries.map(e => parseUnitPrice(e.unitPrice))
+          const minPrice = Math.min(...prices)
+          const maxPrice = Math.max(...prices)
+          const cat = catOverrides[selectedProduct] || categorize(name)
+          return (
+            <>
+              <button className={styles.pdBack} onClick={() => setSelectedProduct(null)}>
+                <i className="ti ti-arrow-left" aria-hidden="true" /> Back
+              </button>
+              <div className={styles.pdHeader}>
+                <p className={styles.pdName}>{name}</p>
+                <div className={styles.pdMeta}>
+                  <span className={styles.pdCatBadge} style={{ background: CAT_BG[cat] || '#f3f4f6', color: CAT_COLORS[cat] || '#6b7280' }}>{cat}</span>
+                  <span className={styles.pdTimesBought}>Bought {richHistory.length}×</span>
+                </div>
+              </div>
+              <div className={styles.card}>
+                <div className={styles.pdHeroRow}>
+                  <div className={styles.pdHeroCurrent}>
+                    <span className={styles.pdHeroLabel}>Current</span>
+                    <span className={styles.pdHeroValue}>{lastEntry?.unitPrice || '—'}</span>
+                  </div>
+                  {totalDeltaStr && (
+                    <span className={`${styles.pdDeltaChip} ${isTotalUp ? styles.phDeltaUp : styles.phDeltaDown}`}>
+                      {totalDeltaStr}
+                    </span>
+                  )}
+                  <div className={styles.pdHeroStat}>
+                    <span className={styles.pdHeroLabel}>Low</span>
+                    <span className={styles.pdHeroValue}>${minPrice.toFixed(2)}</span>
+                  </div>
+                  <div className={styles.pdHeroStat}>
+                    <span className={styles.pdHeroLabel}>High</span>
+                    <span className={styles.pdHeroValue}>${maxPrice.toFixed(2)}</span>
+                  </div>
+                </div>
+                <ProductLineGraph entries={entries} />
+              </div>
+              <div className={styles.card} style={{ padding: 0, overflow: 'hidden' }}>
+                <p className={styles.cardLabel} style={{ padding: '12px 16px 8px' }}>Purchase history</p>
+                <div className={styles.pdTableHead}>
+                  <span>Date</span>
+                  <span>Store</span>
+                  <span>Qty</span>
+                  <span>Unit price</span>
+                  <span>Change</span>
+                </div>
+                {richHistory.map((entry, i) => {
+                  const prev = richHistory[i - 1]
+                  const prevPrice = prev ? parseUnitPrice(prev.unitPrice) : 0
+                  const currPrice = parseUnitPrice(entry.unitPrice)
+                  const hasDelta = prev && prevPrice > 0 && currPrice !== prevPrice
+                  const diff = hasDelta ? currPrice - prevPrice : 0
+                  const isUp = diff > 0
+                  return (
+                    <div key={i} className={styles.pdTableRow}>
+                      <span className={styles.pdTableDate}>{entry.orderDate.split(',')[0]}</span>
+                      <span className={styles.pdTableStore}>{entry.store}</span>
+                      <span className={styles.pdTableQty}>{entry.quantity || '—'}</span>
+                      <span className={styles.pdTablePrice}>{entry.unitPrice || '—'}</span>
+                      <span className={hasDelta ? (isUp ? styles.priceDeltaUp : styles.priceDeltaDown) : styles.pdTableDeltaNone}>
+                        {hasDelta ? `${isUp ? '+' : '-'}$${Math.abs(diff).toFixed(2)}` : '—'}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className={styles.card}>
+                <p className={styles.cardLabel}>Multi-store comparison</p>
+                <p className={styles.pdStorePlaceholder}>Store comparison coming soon — connect a second store to unlock.</p>
+              </div>
+            </>
+          )
+        })()}
+
+        {!selectedProduct && tab === 'overview' && (
           <>
             <TimeFilterBar
               timeRange={timeRange} setTimeRange={setTimeRange}
@@ -930,7 +1089,7 @@ export default function App() {
                     return (
                       <div key={idx} className={styles.orderItem}>
                         <span className={styles.catDot} style={{ background: CAT_COLORS[cat], boxShadow: `0 0 0 3px ${CAT_BG[cat] || '#f3f4f6'}` }} />
-                        <span className={styles.orderItemName}>{item.name}</span>
+                        <button className={`${styles.orderItemName} ${styles.pdNameLink}`} onClick={() => selectProduct(item.productId || item.name)}>{item.name}</button>
                         <span className={styles.orderItemMeta}>
                           {item.quantity && <span>{item.quantity} · </span>}
                           ${(item.price || 0).toFixed(2)}
@@ -957,7 +1116,7 @@ export default function App() {
                   {drilldownCatItems.map((item, idx) => (
                     <div key={idx} className={styles.orderItem}>
                       <span className={styles.catDot} style={{ background: CAT_COLORS[drilldownCat] || '#888' }} />
-                      <span className={styles.orderItemName}>{item.name}</span>
+                      <button className={`${styles.orderItemName} ${styles.pdNameLink}`} onClick={() => selectProduct(item.key || item.name)}>{item.name}</button>
                       <span className={styles.orderItemMeta}>×{item.count} · ${item.lastPrice.toFixed(2)}</span>
                     </div>
                   ))}
@@ -1022,7 +1181,7 @@ export default function App() {
           </>
         )}
 
-        {tab === 'orders' && (
+        {!selectedProduct && tab === 'orders' && (
           <>
             <TimeFilterBar
               timeRange={timeRange} setTimeRange={setTimeRange}
@@ -1062,7 +1221,7 @@ export default function App() {
                                 className={styles.catDot}
                                 style={{ background: CAT_COLORS[cat], boxShadow: `0 0 0 3px ${CAT_BG[cat] || '#f3f4f6'}` }}
                               />
-                              <span className={styles.orderItemName}>{item.name}</span>
+                              <button className={`${styles.orderItemName} ${styles.pdNameLink}`} onClick={e => { e.stopPropagation(); selectProduct(item.productId || item.name) }}>{item.name}</button>
                               <span className={styles.orderItemMeta}>
                                 {item.quantity && <span>{item.quantity} · </span>}
                                 ${(item.price || 0).toFixed(2)}
@@ -1079,7 +1238,7 @@ export default function App() {
           </>
         )}
 
-        {tab === 'items' && (
+        {!selectedProduct && tab === 'items' && (
           <>
             <TimeFilterBar
               timeRange={timeRange} setTimeRange={setTimeRange}
@@ -1117,7 +1276,7 @@ export default function App() {
               </div>
               {sortedFiltered.slice(0, 100).map((item, idx) => (
                 <div key={idx} className={styles.tableRow}>
-                  <span className={styles.itemName} title={item.name}>{item.name}</span>
+                  <button className={`${styles.itemName} ${styles.pdNameLink}`} title={item.name} onClick={e => { e.stopPropagation(); selectProduct(item.productId || item.name) }}>{item.name}</button>
                   <select
                     className={styles.catSelect}
                     value={item.cat}
@@ -1138,7 +1297,7 @@ export default function App() {
           </>
         )}
 
-        {tab === 'price history' && (
+        {!selectedProduct && tab === 'price history' && (
           <>
             <div className={styles.filterRow}>
               <div style={{ position: 'relative', flex: 1 }}>
@@ -1154,13 +1313,13 @@ export default function App() {
             <p className={styles.sectionHint}>Items bought more than once, sorted by number of price changes.</p>
             <div className={styles.priceList}>
               {filteredPriceHistory.map(item => (
-                <PriceHistoryCard key={item.name} item={item} />
+                <PriceHistoryCard key={item.key} item={item} onSelect={selectProduct} />
               ))}
             </div>
           </>
         )}
 
-        {tab === 'insights' && (() => {
+        {!selectedProduct && tab === 'insights' && (() => {
           const now = new Date()
           const curLabel = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
           const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
@@ -1250,7 +1409,7 @@ export default function App() {
           )
         })()}
 
-        {tab === 'cart' && (
+        {!selectedProduct && tab === 'cart' && (
           <>
             <div className={styles.filterRow}>
               <div style={{ position: 'relative', flex: 1 }}>
@@ -1299,7 +1458,7 @@ export default function App() {
                   return (
                     <div key={item.key} className={styles.cartRow}>
                       <div className={styles.cartItemInfo}>
-                        <span className={styles.cartItemName}>{item.name}</span>
+                        <button className={`${styles.cartItemName} ${styles.pdNameLink}`} onClick={() => selectProduct(item.key)}>{item.name}</button>
                         <span className={styles.cartItemSub}>
                           {lastDate ? `Last bought ${lastDate.split(',')[0]}` : 'No history'}
                           {changes > 0 && ` · ${changes} price change${changes !== 1 ? 's' : ''}`}
