@@ -943,10 +943,10 @@
   justify-content: space-between;
   align-items: center;
   padding: 6px 0;
-  border-bottom: 1px solid #E5E5E5;
+  border-top: 1px solid #E5E5E5;
   gap: 8px;
 }
-.insightsPriceRow:last-child { border-bottom: none; }
+.insightsPriceRow:first-child { border-top: none; }
 
 .insightsPriceName {
   font-size: 12px;
@@ -996,7 +996,11 @@
 .insightsCatName {
   font-size: 12px;
   color: var(--text-primary);
-  min-width: 110px;
+  min-width: 80px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .insightsCatBar {
@@ -1011,4 +1015,22 @@
   display: block;
   height: 100%;
   border-radius: 3px;
+}
+
+.insightsDeltaFlat {
+  color: var(--text-muted);
+}
+
+.insightsCalNote {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.insightsCatTrend {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
 }

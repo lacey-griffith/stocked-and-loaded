@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { categorize, CAT_COLORS, CAT_BG } from './categories'
 import SEED_DATA from './seedData'
 import { Chart, registerables } from 'chart.js'
@@ -114,13 +114,13 @@ function computeInsights(orders, allItems) {
   Object.values(priceMapByKey).forEach(({ name, entries }) => {
     if (entries.length < 2) return
     entries.sort((a, b) => parseDate(a.date) - parseDate(b.date))
-    const first = parseUnitPrice(entries[0].unitPrice)
+    const prev = parseUnitPrice(entries[entries.length - 2].unitPrice)
     const last = parseUnitPrice(entries[entries.length - 1].unitPrice)
-    if (first <= 0 || last <= 0) return
-    const diff = last - first
+    if (prev <= 0 || last <= 0) return
+    const diff = last - prev
     if (Math.abs(diff) < 0.01) return
-    const pct = Math.round(Math.abs(diff / first) * 100)
-    allChanges.push({ name, diff, pct, first, last })
+    const pct = Math.round(Math.abs(diff / prev) * 100)
+    allChanges.push({ name, diff, pct, prev, last })
   })
 
   const priceChanges = allChanges.length
@@ -431,7 +431,7 @@ export default function App() {
     })
   )
 
-  const insights = computeInsights(orders, allItems)
+  const insights = useMemo(() => computeInsights(orders, allItems), [orders])
 
   // Time-filtered views for orders + items tabs
   const bounds = getDateBounds(timeRange, customFrom, customTo, timeRangeMonth)
@@ -881,7 +881,10 @@ export default function App() {
             )}
 
             <div className={styles.insightsCard}>
-              <p className={styles.cardLabel}>This month at a glance</p>
+              <p className={styles.cardLabel}>
+                This month at a glance
+                <span className={styles.insightsCalNote}> · current month</span>
+              </p>
               <div className={styles.insightsStats}>
                 <div className={styles.insightsStat}>
                   <span className={styles.insightsStatLabel}>This month</span>
@@ -889,9 +892,11 @@ export default function App() {
                 </div>
                 <div className={styles.insightsStat}>
                   <span className={styles.insightsStatLabel}>vs last month</span>
-                  <span className={`${styles.insightsStatValue} ${insights.momDelta != null ? (insights.momDelta > 0 ? styles.insightsDeltaUp : styles.insightsDeltaDown) : ''}`}>
+                  <span className={`${styles.insightsStatValue} ${insights.momDelta != null ? (insights.momDelta > 0 ? styles.insightsDeltaUp : insights.momDelta < 0 ? styles.insightsDeltaDown : styles.insightsDeltaFlat) : ''}`}>
                     {insights.momDelta != null
-                      ? `${insights.momDelta > 0 ? '+' : ''}$${Math.abs(insights.momDelta).toFixed(2)}`
+                      ? insights.momDelta === 0
+                        ? 'No change'
+                        : `${insights.momDelta > 0 ? '+' : '-'}$${Math.abs(insights.momDelta).toFixed(2)}`
                       : '—'}
                   </span>
                 </div>
@@ -1085,8 +1090,10 @@ export default function App() {
                   {insights.momDelta != null && (
                     <div className={styles.insightsMonthBox}>
                       <span className={styles.insightsStatLabel}>Change</span>
-                      <span className={`${styles.insightsStatValue} ${insights.momDelta > 0 ? styles.insightsDeltaUp : styles.insightsDeltaDown}`}>
-                        {insights.momDelta > 0 ? '+' : ''}${Math.abs(insights.momDelta).toFixed(2)}
+                      <span className={`${styles.insightsStatValue} ${insights.momDelta > 0 ? styles.insightsDeltaUp : insights.momDelta < 0 ? styles.insightsDeltaDown : styles.insightsDeltaFlat}`}>
+                        {insights.momDelta === 0
+                          ? 'No change'
+                          : `${insights.momDelta > 0 ? '+' : '-'}$${Math.abs(insights.momDelta).toFixed(2)}`}
                       </span>
                     </div>
                   )}
@@ -1098,8 +1105,8 @@ export default function App() {
                 <div className={styles.insightsPriceCols}>
                   <div>
                     <p className={styles.insightsPriceColLabel}>↑ Increases ({insights.priceJumps.length})</p>
-                    {insights.priceJumps.slice(0, 6).map((c, i) => (
-                      <div key={i} className={styles.insightsPriceRow}>
+                    {insights.priceJumps.slice(0, 6).map(c => (
+                      <div key={c.name} className={styles.insightsPriceRow}>
                         <span className={styles.insightsPriceName}>{shortName(c.name)}</span>
                         <span className={styles.insightsPriceDeltaUp}>+${c.diff.toFixed(2)} ({c.pct}%)</span>
                       </div>
@@ -1108,8 +1115,8 @@ export default function App() {
                   </div>
                   <div>
                     <p className={styles.insightsPriceColLabel}>↓ Decreases ({insights.priceDrops.length})</p>
-                    {insights.priceDrops.slice(0, 6).map((c, i) => (
-                      <div key={i} className={styles.insightsPriceRow}>
+                    {insights.priceDrops.slice(0, 6).map(c => (
+                      <div key={c.name} className={styles.insightsPriceRow}>
                         <span className={styles.insightsPriceName}>{shortName(c.name)}</span>
                         <span className={styles.insightsPriceDeltaDown}>-${Math.abs(c.diff).toFixed(2)} ({c.pct}%)</span>
                       </div>
@@ -1121,6 +1128,12 @@ export default function App() {
 
               <div className={styles.card}>
                 <p className={styles.cardLabel}>Category trends (MoM)</p>
+                {insights.categoryTrend && (
+                  <p className={styles.insightsCatTrend}>
+                    Biggest shift: <strong>{insights.categoryTrend.cat}</strong>
+                    {insights.categoryTrend.growth > 0 ? ' +' : ' -'}${Math.abs(insights.categoryTrend.growth).toFixed(2)} vs last month
+                  </p>
+                )}
                 <div className={styles.insightsCatList}>
                   {insights.catDeltas.filter(c => c.prev > 0).slice(0, 8).map(c => {
                     const pct = Math.min(100, Math.abs(c.growth / Math.max(c.prev, 0.01)) * 100)
