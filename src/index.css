@@ -22,6 +22,7 @@
   --bg: var(--color-cold-brew-50);
   --bg-card: var(--color-buttercream);
   --bg-surface: #F0F0F0;
+  --bg-app: var(--bg-surface);
   --bg-hover: #EBEBEB;
 
   /* Text */

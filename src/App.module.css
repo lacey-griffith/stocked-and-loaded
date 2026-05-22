@@ -1153,8 +1153,8 @@
 .cartQtyBtn {
   background: #FFFFFF;
   border: none;
-  width: 26px;
-  height: 26px;
+  width: 36px;
+  height: 36px;
   cursor: pointer;
   font-size: 15px;
   color: var(--text-primary);
@@ -1175,7 +1175,7 @@
   color: var(--text-primary);
   border-left: 1px solid #E5E5E5;
   border-right: 1px solid #E5E5E5;
-  height: 26px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1193,8 +1193,8 @@
   background: none;
   border: 1px solid #E5E5E5;
   border-radius: 6px;
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
   cursor: pointer;
   color: var(--text-muted);
   font-size: 14px;
@@ -1216,8 +1216,8 @@
   background: none;
   border: 1px solid #E5E5E5;
   border-radius: 6px;
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
   cursor: pointer;
   color: var(--text-muted);
   font-size: 14px;
@@ -1482,7 +1482,7 @@
   transition: text-decoration-color 0.15s, color 0.15s;
 }
 .pdNameLink:hover {
-  color: var(--color-teal);
+  color: var(--color-heb-red);
   text-decoration-color: currentColor;
 }
 
@@ -1554,7 +1554,7 @@
   cursor: pointer;
   transition: background 0.1s;
 }
-.compactRow:first-child { border-top: none; }
+.compactOrderGroup:first-child > .compactRow { border-top: none; }
 .compactRow:hover { background: var(--bg-app); }
 .compactRowOpen { background: var(--bg-app); }
 .compactDate { font-size: 13px; color: var(--text-primary); }
@@ -1576,8 +1576,8 @@
   margin-bottom: 14px;
 }
 .phAlphaBtn {
-  min-width: 26px;
-  height: 26px;
+  min-width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;

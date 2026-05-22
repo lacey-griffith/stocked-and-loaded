@@ -802,7 +802,7 @@ export default function App() {
     try {
       const resp = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY, 'anthropic-version': '2023-06-01' },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 1000,
@@ -1033,7 +1033,7 @@ export default function App() {
                 <p className={styles.cardLabel} style={{ padding: '12px 16px 8px' }}>Purchase history</p>
                 <div className={styles.pdTableHead}>
                   <span>Date</span>
-                  <span>Store</span>
+                  <span className={styles.pdTableStore}>Store</span>
                   <span>Qty</span>
                   <span>Unit price</span>
                   <span>Change</span>
@@ -1267,7 +1267,7 @@ export default function App() {
                 {timeFilteredOrders.map(o => {
                   const open = expandedOrder === o.orderId
                   return (
-                    <div key={o.orderId}>
+                    <div key={o.orderId} className={styles.compactOrderGroup}>
                       <div className={`${styles.compactRow} ${open ? styles.compactRowOpen : ''}`} onClick={() => setExpandedOrder(open ? null : o.orderId)}>
                         <span className={styles.compactDate}>{parseDate(o.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                         <span className={styles.compactStore}>{o.header}</span>
