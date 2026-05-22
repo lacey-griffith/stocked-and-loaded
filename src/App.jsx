@@ -6,6 +6,9 @@ import styles from './App.module.css'
 
 Chart.register(...registerables)
 
+const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY
+if (!API_KEY) console.warn('[stocked-and-loaded] VITE_ANTHROPIC_API_KEY is not set — screenshot import is disabled')
+
 const STORAGE_KEY = 'stocked_and_loaded_v1'
 const CATEGORY_OVERRIDES_KEY = 'stocked_loaded_cat_overrides'
 const TIME_RANGE_KEY = 'stocked_loaded_time_range'
@@ -168,8 +171,8 @@ function PriceHistoryCard({ item }) {
   const prices = entries.map(e => parseUnitPrice(e.unitPrice))
   const minPrice = Math.min(...prices)
   const maxPrice = Math.max(...prices)
-  const minEntry = entries.find(e => parseUnitPrice(e.unitPrice) === minPrice)
-  const maxEntry = entries.find(e => parseUnitPrice(e.unitPrice) === maxPrice)
+  const minEntry = entries.findLast(e => parseUnitPrice(e.unitPrice) === minPrice)
+  const maxEntry = entries.findLast(e => parseUnitPrice(e.unitPrice) === maxPrice)
 
   return (
     <div className={styles.card}>
@@ -191,7 +194,7 @@ function PriceHistoryCard({ item }) {
           <div className={styles.phHeroRow}>
             <div className={styles.phHeroCurrent}>
               <span className={styles.phHeroLabel}>Current</span>
-              <span className={styles.phHeroValue}>{lastEntry?.unitPrice}</span>
+              <span className={styles.phHeroValue}>{lastEntry?.unitPrice || '—'}</span>
             </div>
             {totalDeltaStr && (
               <span className={`${styles.phDeltaChip} ${isTotalUp ? styles.phDeltaUp : styles.phDeltaDown}`}>
@@ -221,6 +224,80 @@ function PriceHistoryCard({ item }) {
         </>
       )}
       {view === 'chips' && <PriceChips entries={entries} />}
+    </div>
+  )
+}
+
+function TimeFilterBar({
+  timeRange, setTimeRange,
+  timeRangeMonth, setTimeRangeMonth,
+  customFrom, setCustomFrom,
+  customTo, setCustomTo,
+  orderMonths,
+  tab,
+  timeFilteredOrders,
+  timeFilteredItems,
+  orders,
+  allItems,
+}) {
+  const isFiltered = timeRange !== 'all'
+  const monthLabel = m => {
+    const [yr, mo] = m.split('-').map(Number)
+    return new Date(yr, mo - 1, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+  }
+  return (
+    <div className={styles.timeFilterBar}>
+      <div className={styles.timeFilterPills}>
+        {[['all','All'],['30','30d'],['60','60d'],['90','90d']].map(([val, label]) => (
+          <button
+            key={val}
+            className={`${styles.timeFilterPill} ${timeRange === val ? styles.timeFilterPillActive : ''}`}
+            onClick={() => setTimeRange(val)}
+          >
+            {label}
+          </button>
+        ))}
+        <select
+          className={`${styles.timeFilterPill} ${timeRange === 'month' ? styles.timeFilterPillActive : ''}`}
+          value={timeRange === 'month' ? timeRangeMonth : ''}
+          onChange={e => {
+            if (e.target.value) { setTimeRangeMonth(e.target.value); setTimeRange('month') }
+          }}
+        >
+          <option value="">Month…</option>
+          {orderMonths.map(m => <option key={m} value={m}>{monthLabel(m)}</option>)}
+        </select>
+      </div>
+      <div className={styles.timeFilterCustom}>
+        <input
+          type="date"
+          className={styles.timeFilterDate}
+          value={customFrom}
+          onChange={e => {
+            setCustomFrom(e.target.value)
+            if (e.target.value && customTo) setTimeRange('custom')
+          }}
+        />
+        <span className={styles.timeFilterDash}>–</span>
+        <input
+          type="date"
+          className={styles.timeFilterDate}
+          value={customTo}
+          onChange={e => {
+            setCustomTo(e.target.value)
+            if (customFrom && e.target.value) setTimeRange('custom')
+          }}
+        />
+      </div>
+      {isFiltered && (
+        <span className={styles.timeFilterIndicator}>
+          {tab === 'items'
+            ? `${timeFilteredItems.length} of ${allItems.length} items`
+            : tab === 'overview'
+            ? `${timeFilteredOrders.length} of ${orders.length} orders`
+            : `${timeFilteredOrders.length} of ${orders.length} orders`}
+        </span>
+      )}
     </div>
   )
 }
@@ -266,6 +343,11 @@ export default function App() {
     setDrilldownOrder(null)
     setDrilldownCat(null)
   }, [timeRange, timeRangeMonth, customFrom, customTo])
+
+  useEffect(() => {
+    setDrilldownOrder(null)
+    setDrilldownCat(null)
+  }, [tab])
 
   function setCatOverride(key, cat) {
     setCatOverrides(prev => {
@@ -323,7 +405,7 @@ export default function App() {
 
   const overviewOrders = [...timeFilteredOrders].sort((a, b) => parseDate(a.date) - parseDate(b.date))
   const cats = ['All', ...Object.keys(catTotals).sort()]
-  const drilldownOrderData = drilldownOrder ? orders.find(o => o.orderId === drilldownOrder) : null
+  const drilldownOrderData = drilldownOrder ? timeFilteredOrders.find(o => o.orderId === drilldownOrder) : null
   const drilldownCatItems = drilldownCat
     ? Object.values(
         timeFilteredItems
@@ -332,10 +414,10 @@ export default function App() {
             const k = i.productId || i.name
             if (!acc[k]) acc[k] = { name: i.name, count: 0, lastPrice: 0, lastDate: '', totalSpend: 0 }
             acc[k].count++
-            acc[k].totalSpend += i.price
+            acc[k].totalSpend += parseUnitPrice(i.unitPrice) * (parseInt(i.quantity) || 1)
             if (!acc[k].lastDate || parseDate(i.orderDate) > parseDate(acc[k].lastDate)) {
               acc[k].lastDate = i.orderDate
-              acc[k].lastPrice = i.price
+              acc[k].lastPrice = parseUnitPrice(i.unitPrice)
             }
             return acc
           }, {})
@@ -378,15 +460,16 @@ export default function App() {
   useEffect(() => {
     if (tab !== 'overview') return
     const timer = setTimeout(() => {
+      const freshOrders = overviewOrders
       if (spendChartRef.current) {
         spendChartInst.current?.destroy()
         spendChartInst.current = new Chart(spendChartRef.current, {
           type: 'bar',
           data: {
-            labels: overviewOrders.map(o => o.date.split(',')[0]),
+            labels: freshOrders.map(o => o.date.split(',')[0]),
             datasets: [{
               label: 'Order total',
-              data: overviewOrders.map(o => o.totalAmount),
+              data: freshOrders.map(o => o.totalAmount),
               backgroundColor: '#E1251B',
               borderRadius: 5,
               borderSkipped: false,
@@ -409,11 +492,8 @@ export default function App() {
             },
             onClick: (evt, elements) => {
               if (elements.length > 0) {
-                const ord = overviewOrders[elements[0].index]
-                if (ord) {
-                  setDrilldownOrder(prev => prev === ord.orderId ? null : ord.orderId)
-                  setDrilldownCat(null)
-                }
+                const ord = freshOrders[elements[0].index]
+                if (ord) setDrilldownOrder(prev => prev === ord.orderId ? null : ord.orderId)
               }
             },
             onHover: (evt, elements) => {
@@ -444,10 +524,7 @@ export default function App() {
             onClick: (evt, elements) => {
               if (elements.length > 0) {
                 const cat = top7[elements[0].index]?.[0]
-                if (cat) {
-                  setDrilldownCat(prev => prev === cat ? null : cat)
-                  setDrilldownOrder(null)
-                }
+                if (cat) setDrilldownCat(prev => prev === cat ? null : cat)
               }
             },
             onHover: (evt, elements) => {
@@ -457,7 +534,7 @@ export default function App() {
         })
       }
     }, 150)
-    return () => { clearTimeout(timer) }
+    return () => { clearTimeout(timer); spendChartInst.current?.destroy(); catChartInst.current?.destroy() }
   }, [tab, orders, catOverrides, timeRange, timeRangeMonth, customFrom, customTo])
 
   async function handleScreenshot(e) {
@@ -542,68 +619,6 @@ export default function App() {
 
   const shortName = name => name?.replace(/, \d+(\.\d+)?\s*(oz|lb|lbs|ct|L|ml|g|pk).*/i, '').replace(/^H-E-B /i, '').replace(/^Hill Country Fare /i, '')
 
-  const isFiltered = timeRange !== 'all'
-
-  function TimeFilterBar() {
-    const monthLabel = m => {
-      const [yr, mo] = m.split('-').map(Number)
-      return new Date(yr, mo - 1, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-    }
-    return (
-      <div className={styles.timeFilterBar}>
-        <div className={styles.timeFilterPills}>
-          {[['all','All'],['30','30d'],['60','60d'],['90','90d']].map(([val, label]) => (
-            <button
-              key={val}
-              className={`${styles.timeFilterPill} ${timeRange === val ? styles.timeFilterPillActive : ''}`}
-              onClick={() => setTimeRange(val)}
-            >
-              {label}
-            </button>
-          ))}
-          <select
-            className={`${styles.timeFilterPill} ${timeRange === 'month' ? styles.timeFilterPillActive : ''}`}
-            value={timeRange === 'month' ? timeRangeMonth : ''}
-            onChange={e => {
-              if (e.target.value) { setTimeRangeMonth(e.target.value); setTimeRange('month') }
-            }}
-          >
-            <option value="">Month…</option>
-            {orderMonths.map(m => <option key={m} value={m}>{monthLabel(m)}</option>)}
-          </select>
-        </div>
-        <div className={styles.timeFilterCustom}>
-          <input
-            type="date"
-            className={styles.timeFilterDate}
-            value={customFrom}
-            onChange={e => {
-              setCustomFrom(e.target.value)
-              if (e.target.value && customTo) setTimeRange('custom')
-            }}
-          />
-          <span className={styles.timeFilterDash}>–</span>
-          <input
-            type="date"
-            className={styles.timeFilterDate}
-            value={customTo}
-            onChange={e => {
-              setCustomTo(e.target.value)
-              if (customFrom && e.target.value) setTimeRange('custom')
-            }}
-          />
-        </div>
-        {isFiltered && (
-          <span className={styles.timeFilterIndicator}>
-            {tab === 'items'
-              ? `${timeFilteredItems.length} of ${allItems.length} items`
-              : `${timeFilteredOrders.length} of ${orders.length} orders`}
-          </span>
-        )}
-      </div>
-    )
-  }
-
   return (
     <div className={styles.app}>
       <header className={styles.header}>
@@ -617,11 +632,13 @@ export default function App() {
               {importStatus.msg}
             </span>
           )}
-          <label className={styles.importBtn}>
-            <i className="ti ti-camera" aria-hidden="true" />
-            Import screenshot
-            <input type="file" accept="image/*" onChange={handleScreenshot} style={{ display: 'none' }} />
-          </label>
+          {API_KEY && (
+            <label className={styles.importBtn}>
+              <i className="ti ti-camera" aria-hidden="true" />
+              Import screenshot
+              <input type="file" accept="image/*" onChange={handleScreenshot} style={{ display: 'none' }} />
+            </label>
+          )}
           <button
             className={showManual ? styles.activeBtn : ''}
             onClick={() => setShowManual(s => !s)}
@@ -687,7 +704,15 @@ export default function App() {
       <main className={styles.main}>
         {tab === 'overview' && (
           <>
-            <TimeFilterBar />
+            <TimeFilterBar
+              timeRange={timeRange} setTimeRange={setTimeRange}
+              timeRangeMonth={timeRangeMonth} setTimeRangeMonth={setTimeRangeMonth}
+              customFrom={customFrom} setCustomFrom={setCustomFrom}
+              customTo={customTo} setCustomTo={setCustomTo}
+              orderMonths={orderMonths} tab={tab}
+              timeFilteredOrders={timeFilteredOrders} timeFilteredItems={timeFilteredItems}
+              orders={orders} allItems={allItems}
+            />
             <div className={styles.metrics}>
               <div className={styles.metric}>
                 <span className={styles.metricLabel}>Total spent</span>
@@ -739,7 +764,7 @@ export default function App() {
                   </div>
                   <div className={styles.orderMeta}>
                     <p className={styles.orderTotal}>${(drilldownOrderData.totalAmount || 0).toFixed(2)}</p>
-                    <p className={styles.orderSub}>{drilldownOrderData.itemCount} items</p>
+                    <p className={styles.orderSub}>{drilldownOrderData.itemCount} items · <span className={styles.orderStatus}>{drilldownOrderData.status}</span></p>
                   </div>
                   <button className={styles.drilldownClose} onClick={() => setDrilldownOrder(null)}>
                     <i className="ti ti-x" aria-hidden="true" />
@@ -802,7 +827,15 @@ export default function App() {
 
         {tab === 'orders' && (
           <>
-            <TimeFilterBar />
+            <TimeFilterBar
+              timeRange={timeRange} setTimeRange={setTimeRange}
+              timeRangeMonth={timeRangeMonth} setTimeRangeMonth={setTimeRangeMonth}
+              customFrom={customFrom} setCustomFrom={setCustomFrom}
+              customTo={customTo} setCustomTo={setCustomTo}
+              orderMonths={orderMonths} tab={tab}
+              timeFilteredOrders={timeFilteredOrders} timeFilteredItems={timeFilteredItems}
+              orders={orders} allItems={allItems}
+            />
             <div className={styles.orderList}>
               {timeFilteredOrders.map(o => {
                 const open = expandedOrder === o.orderId
@@ -851,7 +884,15 @@ export default function App() {
 
         {tab === 'items' && (
           <>
-            <TimeFilterBar />
+            <TimeFilterBar
+              timeRange={timeRange} setTimeRange={setTimeRange}
+              timeRangeMonth={timeRangeMonth} setTimeRangeMonth={setTimeRangeMonth}
+              customFrom={customFrom} setCustomFrom={setCustomFrom}
+              customTo={customTo} setCustomTo={setCustomTo}
+              orderMonths={orderMonths} tab={tab}
+              timeFilteredOrders={timeFilteredOrders} timeFilteredItems={timeFilteredItems}
+              orders={orders} allItems={allItems}
+            />
             <div className={styles.filterRow}>
               <div style={{ position: 'relative', flex: 1 }}>
                 <i className="ti ti-search" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: 16 }} aria-hidden="true" />
@@ -915,8 +956,8 @@ export default function App() {
             </div>
             <p className={styles.sectionHint}>Items bought more than once, sorted by number of price changes.</p>
             <div className={styles.priceList}>
-              {filteredPriceHistory.map((item, idx) => (
-                <PriceHistoryCard key={idx} item={item} />
+              {filteredPriceHistory.map(item => (
+                <PriceHistoryCard key={item.name} item={item} />
               ))}
             </div>
           </>

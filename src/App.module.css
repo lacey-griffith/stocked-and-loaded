@@ -729,6 +729,9 @@
   font-family: var(--mono);
   color: var(--text-primary);
   letter-spacing: -0.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .phHeroCount {
@@ -768,6 +771,7 @@
   border: 1px solid #E5E5E5;
   border-radius: 8px;
   padding: 6px 10px;
+  min-width: 60px;
 }
 
 .phStatLabel {
@@ -804,8 +808,6 @@
   gap: 5px;
   padding: 4px 0;
 }
-.phDetailsSummary::-webkit-details-marker { display: none; }
-.phDetailsSummary::marker { display: none; }
 .phDetailsSummary::before {
   content: '▸';
   font-size: 10px;
