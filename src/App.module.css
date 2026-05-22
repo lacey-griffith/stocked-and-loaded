@@ -1482,3 +1482,130 @@
   color: var(--color-teal);
   text-decoration-color: currentColor;
 }
+
+/* Bar chart bucket toggle */
+.chartCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.chartBucketToggle {
+  display: flex;
+  gap: 2px;
+}
+.chartBucketBtn {
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-app);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font);
+  transition: background 0.12s, color 0.12s;
+}
+.chartBucketBtn:hover { background: var(--bg-card); color: var(--text-primary); }
+.chartBucketBtnActive {
+  background: var(--color-heb-red);
+  color: #fff;
+  border-color: var(--color-heb-red);
+}
+
+/* Orders view toggle */
+.ordersViewBar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.ordersViewBtn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-app);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.12s, color 0.12s;
+}
+.ordersViewBtn:hover { background: var(--bg-card); color: var(--text-primary); }
+.ordersViewBtnActive {
+  background: var(--color-heb-red);
+  color: #fff;
+  border-color: var(--color-heb-red);
+}
+
+/* Compact order row */
+.compactRow {
+  display: grid;
+  grid-template-columns: 1.2fr 2fr 1.2fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.compactRow:hover { background: var(--bg-app); }
+.compactRow:last-of-type { border-bottom: none; }
+.compactRowOpen { background: var(--bg-app); }
+.compactDate { font-size: 13px; color: var(--text-primary); }
+.compactStore {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.compactMeta { font-size: 13px; color: var(--text-secondary); }
+.compactChevron { font-size: 14px; color: var(--text-muted); }
+
+/* Price history A–Z index */
+.phAlphaBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-bottom: 14px;
+}
+.phAlphaBtn {
+  min-width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: background 0.1s, color 0.1s;
+}
+.phAlphaBtn:hover:not(:disabled) {
+  background: var(--color-heb-red);
+  color: #fff;
+  border-color: var(--color-heb-red);
+}
+.phAlphaBtnDisabled {
+  color: var(--text-muted);
+  background: var(--bg-app);
+  border-color: transparent;
+  cursor: default;
+  opacity: 0.4;
+}
+
+/* Items load more row */
+.loadMoreRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+}

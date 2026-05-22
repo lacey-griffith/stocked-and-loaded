@@ -64,6 +64,8 @@ function loadWatchlist() {
 }
 
 function parseDate(str) {
+  const m = str.match(/([A-Za-z]+ \d+,\s*\d{4})/)
+  if (m) return new Date(m[1])
   return new Date(str.replace(/–.*/, '').trim())
 }
 
@@ -472,6 +474,10 @@ export default function App() {
   const [cart, setCart] = useState(loadCart)
   const [watchlist, setWatchlist] = useState(loadWatchlist)
   const [cartSearch, setCartSearch] = useState('')
+  const [chartBucket, setChartBucket] = useState('order')
+  const [ordersView, setOrdersView] = useState('card')
+  const [itemsVisible, setItemsVisible] = useState(250)
+  const phLetterRefs = useRef({})
 
   useEffect(() => { saveOrders(orders) }, [orders])
 
@@ -494,6 +500,8 @@ export default function App() {
     setCartSearch('')
     setSelectedProduct(null)
   }, [tab])
+
+  useEffect(() => { setItemsVisible(250) }, [itemSearch, filterCat, sortCol, sortDir])
 
   useEffect(() => {
     try { localStorage.setItem(CART_KEY, JSON.stringify(cart)) } catch {}
@@ -669,19 +677,51 @@ export default function App() {
     .sort(([, a], [, b]) => priceChangesCount(b) - priceChangesCount(a))
     .map(([k, p]) => ({ ...p, key: k }))
 
+  const bucketedChartData = (() => {
+    if (chartBucket === 'month') {
+      const map = {}
+      overviewOrders.forEach(o => {
+        const d = parseDate(o.date)
+        const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        if (!map[k]) map[k] = { label: d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }), total: 0 }
+        map[k].total += o.totalAmount || 0
+      })
+      const entries = Object.entries(map).sort()
+      return { labels: entries.map(([, v]) => v.label), values: entries.map(([, v]) => v.total), orders: null }
+    }
+    if (chartBucket === 'week') {
+      const map = {}
+      overviewOrders.forEach(o => {
+        const d = parseDate(o.date)
+        const w = Math.ceil(d.getDate() / 7)
+        const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${w}`
+        const label = `${d.toLocaleDateString('en-US', { month: 'short' })} W${w}`
+        if (!map[k]) map[k] = { label, total: 0 }
+        map[k].total += o.totalAmount || 0
+      })
+      const entries = Object.entries(map).sort()
+      return { labels: entries.map(([, v]) => v.label), values: entries.map(([, v]) => v.total), orders: null }
+    }
+    return {
+      labels: overviewOrders.map(o => parseDate(o.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
+      values: overviewOrders.map(o => o.totalAmount || 0),
+      orders: overviewOrders,
+    }
+  })()
+
   useEffect(() => {
     if (tab !== 'overview') return
     const timer = setTimeout(() => {
-      const freshOrders = overviewOrders
+      const freshBuckets = bucketedChartData
       if (spendChartRef.current) {
         spendChartInst.current?.destroy()
         spendChartInst.current = new Chart(spendChartRef.current, {
           type: 'bar',
           data: {
-            labels: freshOrders.map(o => o.date.split(',')[0]),
+            labels: freshBuckets.labels,
             datasets: [{
-              label: 'Order total',
-              data: freshOrders.map(o => o.totalAmount),
+              label: 'Total',
+              data: freshBuckets.values,
               backgroundColor: '#E1251B',
               borderRadius: 5,
               borderSkipped: false,
@@ -698,18 +738,18 @@ export default function App() {
                 border: { dash: [4, 4] }
               },
               x: {
-                ticks: { maxRotation: 35, font: { size: 11, family: 'DM Sans' }, autoSkip: false },
+                ticks: { maxRotation: 45, font: { size: 11, family: 'DM Sans' }, autoSkip: true, maxTicksLimit: 12 },
                 grid: { display: false }
               }
             },
             onClick: (evt, elements) => {
-              if (elements.length > 0) {
-                const ord = freshOrders[elements[0].index]
+              if (elements.length > 0 && freshBuckets.orders) {
+                const ord = freshBuckets.orders[elements[0].index]
                 if (ord) setDrilldownOrder(prev => prev === ord.orderId ? null : ord.orderId)
               }
             },
             onHover: (evt, elements) => {
-              if (evt.native?.target) evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'
+              if (evt.native?.target) evt.native.target.style.cursor = (elements.length && freshBuckets.orders) ? 'pointer' : 'default'
             },
           }
         })
@@ -747,7 +787,7 @@ export default function App() {
       }
     }, 150)
     return () => { clearTimeout(timer); spendChartInst.current?.destroy(); catChartInst.current?.destroy() }
-  }, [tab, orders, catOverrides, timeRange, timeRangeMonth, customFrom, customTo])
+  }, [tab, orders, catOverrides, timeRange, timeRangeMonth, customFrom, customTo, chartBucket])
 
   async function handleScreenshot(e) {
     const file = e.target.files?.[0]
@@ -1052,9 +1092,16 @@ export default function App() {
 
             <div className={styles.charts}>
               <div className={styles.card}>
-                <p className={styles.cardLabel}>Spend per order</p>
+                <div className={styles.chartCardHeader}>
+                  <p className={styles.cardLabel}>Spend over time</p>
+                  <div className={styles.chartBucketToggle}>
+                    {[['order','Per order'],['week','Weekly'],['month','Monthly']].map(([val, label]) => (
+                      <button key={val} className={`${styles.chartBucketBtn} ${chartBucket === val ? styles.chartBucketBtnActive : ''}`} onClick={() => setChartBucket(val)}>{label}</button>
+                    ))}
+                  </div>
+                </div>
                 <div style={{ position: 'relative', height: 220 }}>
-                  <canvas ref={spendChartRef} role="img" aria-label="Bar chart of spend per order" />
+                  <canvas ref={spendChartRef} role="img" aria-label="Bar chart of spend over time" />
                 </div>
               </div>
               <div className={styles.card}>
@@ -1197,49 +1244,89 @@ export default function App() {
               timeFilteredOrders={timeFilteredOrders} timeFilteredItems={timeFilteredItems}
               orders={orders} allItems={allItems}
             />
-            <div className={styles.orderList}>
-              {timeFilteredOrders.map(o => {
-                const open = expandedOrder === o.orderId
-                return (
-                  <div
-                    key={o.orderId}
-                    className={`${styles.orderCard} ${open ? styles.orderCardOpen : ''}`}
-                    onClick={() => setExpandedOrder(open ? null : o.orderId)}
-                  >
-                    <div className={styles.orderCardHeader}>
-                      <div>
-                        <p className={styles.orderDate}>{o.date}</p>
-                        <p className={styles.orderLocation}>{o.header}</p>
-                      </div>
-                      <div className={styles.orderMeta}>
-                        <p className={styles.orderTotal}>${(o.totalAmount || 0).toFixed(2)}</p>
-                        <p className={styles.orderSub}>{o.itemCount} items · <span className={styles.orderStatus}>{o.status}</span></p>
-                      </div>
-                    </div>
-                    {open && (
-                      <div className={styles.orderItems} onClick={e => e.stopPropagation()}>
-                        {(o.items || []).filter(i => i.price > 0).map((item, idx) => {
-                          const cat = catOverrides[item.productId || item.name] || categorize(item.name)
-                          return (
-                            <div key={idx} className={styles.orderItem}>
-                              <span
-                                className={styles.catDot}
-                                style={{ background: CAT_COLORS[cat], boxShadow: `0 0 0 3px ${CAT_BG[cat] || '#f3f4f6'}` }}
-                              />
-                              <button className={`${styles.orderItemName} ${styles.pdNameLink}`} onClick={e => { e.stopPropagation(); selectProduct(item.productId || item.name) }}>{item.name}</button>
-                              <span className={styles.orderItemMeta}>
-                                {item.quantity && <span>{item.quantity} · </span>}
-                                ${(item.price || 0).toFixed(2)}
-                              </span>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+            <div className={styles.ordersViewBar}>
+              <button className={`${styles.ordersViewBtn} ${ordersView === 'card' ? styles.ordersViewBtnActive : ''}`} onClick={() => setOrdersView('card')} title="Card view">
+                <i className="ti ti-layout-cards" aria-hidden="true" />
+              </button>
+              <button className={`${styles.ordersViewBtn} ${ordersView === 'compact' ? styles.ordersViewBtnActive : ''}`} onClick={() => setOrdersView('compact')} title="Compact view">
+                <i className="ti ti-list" aria-hidden="true" />
+              </button>
             </div>
+            {ordersView === 'compact' ? (
+              <div className={styles.card} style={{ padding: 0, overflow: 'hidden' }}>
+                {timeFilteredOrders.map(o => {
+                  const open = expandedOrder === o.orderId
+                  return (
+                    <div key={o.orderId}>
+                      <div className={`${styles.compactRow} ${open ? styles.compactRowOpen : ''}`} onClick={() => setExpandedOrder(open ? null : o.orderId)}>
+                        <span className={styles.compactDate}>{parseDate(o.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        <span className={styles.compactStore}>{o.header}</span>
+                        <span className={styles.compactMeta}>{o.itemCount} items · <strong>${(o.totalAmount || 0).toFixed(2)}</strong></span>
+                        <i className={`ti ti-chevron-${open ? 'up' : 'down'} ${styles.compactChevron}`} aria-hidden="true" />
+                      </div>
+                      {open && (
+                        <div className={styles.orderItems} onClick={e => e.stopPropagation()}>
+                          {(o.items || []).filter(i => i.price > 0).map((item, idx) => {
+                            const cat = catOverrides[item.productId || item.name] || categorize(item.name)
+                            return (
+                              <div key={idx} className={styles.orderItem}>
+                                <span className={styles.catDot} style={{ background: CAT_COLORS[cat], boxShadow: `0 0 0 3px ${CAT_BG[cat] || '#f3f4f6'}` }} />
+                                <button className={`${styles.orderItemName} ${styles.pdNameLink}`} onClick={e => { e.stopPropagation(); selectProduct(item.productId || item.name) }}>{item.name}</button>
+                                <span className={styles.orderItemMeta}>
+                                  {item.quantity && <span>{item.quantity} · </span>}
+                                  ${(item.price || 0).toFixed(2)}
+                                </span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className={styles.orderList}>
+                {timeFilteredOrders.map(o => {
+                  const open = expandedOrder === o.orderId
+                  return (
+                    <div
+                      key={o.orderId}
+                      className={`${styles.orderCard} ${open ? styles.orderCardOpen : ''}`}
+                      onClick={() => setExpandedOrder(open ? null : o.orderId)}
+                    >
+                      <div className={styles.orderCardHeader}>
+                        <div>
+                          <p className={styles.orderDate}>{o.date}</p>
+                          <p className={styles.orderLocation}>{o.header}</p>
+                        </div>
+                        <div className={styles.orderMeta}>
+                          <p className={styles.orderTotal}>${(o.totalAmount || 0).toFixed(2)}</p>
+                          <p className={styles.orderSub}>{o.itemCount} items · <span className={styles.orderStatus}>{o.status}</span></p>
+                        </div>
+                      </div>
+                      {open && (
+                        <div className={styles.orderItems} onClick={e => e.stopPropagation()}>
+                          {(o.items || []).filter(i => i.price > 0).map((item, idx) => {
+                            const cat = catOverrides[item.productId || item.name] || categorize(item.name)
+                            return (
+                              <div key={idx} className={styles.orderItem}>
+                                <span className={styles.catDot} style={{ background: CAT_COLORS[cat], boxShadow: `0 0 0 3px ${CAT_BG[cat] || '#f3f4f6'}` }} />
+                                <button className={`${styles.orderItemName} ${styles.pdNameLink}`} onClick={e => { e.stopPropagation(); selectProduct(item.productId || item.name) }}>{item.name}</button>
+                                <span className={styles.orderItemMeta}>
+                                  {item.quantity && <span>{item.quantity} · </span>}
+                                  ${(item.price || 0).toFixed(2)}
+                                </span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </>
         )}
 
@@ -1279,7 +1366,7 @@ export default function App() {
                   </span>
                 ))}
               </div>
-              {sortedFiltered.slice(0, 100).map((item, idx) => (
+              {sortedFiltered.slice(0, itemsVisible).map((item, idx) => (
                 <div key={idx} className={styles.tableRow}>
                   <button className={`${styles.itemName} ${styles.pdNameLink}`} title={item.name} onClick={e => { e.stopPropagation(); selectProduct(item.productId || item.name) }}>{item.name}</button>
                   <select
@@ -1295,8 +1382,11 @@ export default function App() {
                   <span className={styles.itemTotal}>${(item.price || 0).toFixed(2)}</span>
                 </div>
               ))}
-              {sortedFiltered.length > 100 && (
-                <p className={styles.moreHint}>Showing 100 of {sortedFiltered.length} — use search to narrow down</p>
+              {sortedFiltered.length > itemsVisible && (
+                <div className={styles.loadMoreRow}>
+                  <span className={styles.moreHint}>Showing {itemsVisible} of {sortedFiltered.length}</span>
+                  <button onClick={() => setItemsVisible(v => v + 250)}>Load more</button>
+                </div>
               )}
             </div>
           </>
@@ -1316,11 +1406,41 @@ export default function App() {
               </div>
             </div>
             <p className={styles.sectionHint}>Items bought more than once, sorted by number of price changes.</p>
-            <div className={styles.priceList}>
-              {filteredPriceHistory.map(item => (
-                <PriceHistoryCard key={item.key} item={item} onSelect={selectProduct} />
-              ))}
-            </div>
+            {(() => {
+              const availableLetters = new Set(filteredPriceHistory.map(p => p.name[0]?.toUpperCase()).filter(Boolean))
+              const firstOfLetter = {}
+              filteredPriceHistory.forEach(p => {
+                const l = p.name[0]?.toUpperCase()
+                if (l && !firstOfLetter[l]) firstOfLetter[l] = p.key
+              })
+              return (
+                <>
+                  <div className={styles.phAlphaBar}>
+                    {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(letter => (
+                      <button
+                        key={letter}
+                        className={`${styles.phAlphaBtn} ${!availableLetters.has(letter) ? styles.phAlphaBtnDisabled : ''}`}
+                        disabled={!availableLetters.has(letter)}
+                        onClick={() => phLetterRefs.current[letter]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })}
+                      >
+                        {letter}
+                      </button>
+                    ))}
+                  </div>
+                  <div className={styles.priceList}>
+                    {filteredPriceHistory.map(item => {
+                      const letter = item.name[0]?.toUpperCase()
+                      const isAnchor = letter && firstOfLetter[letter] === item.key
+                      return (
+                        <div key={item.key} ref={isAnchor ? el => { if (el) phLetterRefs.current[letter] = el } : null}>
+                          <PriceHistoryCard item={item} onSelect={selectProduct} />
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )
+            })()}
           </>
         )}
 
