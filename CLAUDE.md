@@ -11,6 +11,10 @@ After every commit/push, append a log entry to the ## Ship Log section of this f
 
 ## Ship Log
 
+### 2026-05-22 (5)
+Applied 10 Jenny/Karen audit fixes to the Insights feature. Key fixes: price movers now compare the last two purchases (not first-to-last) so intermediate price swings register correctly; `momDelta === 0` renders "No change" in gray instead of falling through to green; `categoryTrend` wired into the category trends card as a "Biggest shift" callout; overview insights card labeled "· current month" to distinguish it from filtered metrics; `computeInsights` wrapped in `useMemo([orders])`; explicit +/- signs on all delta values; CSS border fix and category name overflow truncation.
+- No known issues.
+
 ### 2026-05-22 (4)
 Added Insights tab and overview summary card. `computeInsights(orders, allItems)` computes month-over-month spend delta, all price movers (jumps and drops sorted by magnitude), and per-category MoM growth. A red-left-border summary card above Top Repeat Buys in the overview tab shows this-month total, MoM delta, and price change count with the biggest mover callouts and a "View insights →" link. The full Insights tab has three cards: month comparison boxes, a two-column price movers grid (increases / decreases, top 6 each), and a category trend bar list.
 - No known issues.
