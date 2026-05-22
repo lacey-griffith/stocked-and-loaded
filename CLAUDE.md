@@ -11,6 +11,10 @@ After every commit/push, append a log entry to the ## Ship Log section of this f
 
 ## Ship Log
 
+### 2026-05-22 (4)
+Added Insights tab and overview summary card. `computeInsights(orders, allItems)` computes month-over-month spend delta, all price movers (jumps and drops sorted by magnitude), and per-category MoM growth. A red-left-border summary card above Top Repeat Buys in the overview tab shows this-month total, MoM delta, and price change count with the biggest mover callouts and a "View insights →" link. The full Insights tab has three cards: month comparison boxes, a two-column price movers grid (increases / decreases, top 6 each), and a category trend bar list.
+- No known issues.
+
 ### 2026-05-21
 Vite + React app deployed to GitHub Pages via GitHub Actions. Price history tab overhauled: sparklines (Chart.js, teal line, no axes), numeric delta chips (red for increases, green for decreases), search filter by item name, sorted by most price changes descending. Fixed entry sort order (was newest-first, now oldest-first) and replaced string unit price comparison with numeric via `parseUnitPrice`. Agents Jenny (spec auditor) and Karen (reality checker) added to `.claude/agents/`.
 
@@ -32,6 +36,18 @@ Added persistent category overrides. Items tab category column is now a pill-sha
 
 ### 2026-05-21
 Added asc/desc/off column sorting to the items table. Each of the four column headers is clickable and cycles through states; active column shows a directional chevron, inactive columns show a faded up-chevron hint. Jenny and Karen both audited before push — two fixes applied (null guards on name/cat comparators, key props on chevron elements).
+- No known issues.
+
+### 2026-05-22 (3)
+Applied all 16 Jenny/Karen audit fixes. `TimeFilterBar` hoisted to module scope (was remounting on every render, breaking date input focus). `PriceHistoryCard` keyed on `item.name` instead of array index (view-state no longer bleeds between cards after search). Category drilldown `lastPrice` and `totalSpend` now use `parseUnitPrice(i.unitPrice)` instead of the line total. Bar/donut `onClick` handlers no longer cross-null each other (drilldowns are independent). Drilldowns clear on tab switch. `freshOrders` captured inside `setTimeout` for a clean closure. `drilldownOrderData` resolves from `timeFilteredOrders`. Chart `useEffect` cleanup now destroys both chart instances. Indicator chip has explicit `overview` branch. Hero "Current" shows `—` for missing unit price. `phStatBox` has `min-width: 60px`; `phHeroValue` truncates with ellipsis. `minEntry`/`maxEntry` use `findLast` for most-recent occurrence. Screenshot button hidden unless `VITE_ANTHROPIC_API_KEY` is set (with `console.warn`). Status badge added to bar drilldown panel. `::marker { display: none }` replaced by existing `list-style: none`.
+- No known issues.
+
+### 2026-05-22 (2)
+Redesigned price history cards. Each card now has a hero stat row (current price, total delta chip in red/green, times bought, Low/High stat boxes with dates). The old sparkline is replaced with a responsive 90px Chart.js line graph (HEB red, white-bordered dot on the most recent point, no axes/grid). Price entries collapse into a `<details>` toggle in Graph view. A Graph/Chips button pair at the top-right of each card toggles between the full graph+stats layout and a flat always-expanded chips-only view.
+- No known issues.
+
+### 2026-05-22
+Wired time range filter to the overview tab. All four metrics, both charts, and the category legend now reflect the active filter. Bar chart drilldown: clicking a bar shows a full order detail panel below the charts (same style as orders tab). Donut drilldown: clicking a category segment shows a panel with top items in that category sorted by total spend, including times bought and last price. Both drilldowns reset on filter change and can be closed via X button or re-clicking the same element.
 - No known issues.
 
 ### 2026-05-21
