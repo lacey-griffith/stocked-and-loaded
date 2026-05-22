@@ -11,6 +11,14 @@ After every commit/push, append a log entry to the ## Ship Log section of this f
 
 ## Ship Log
 
+### 2026-05-22 (9)
+Applied 4 Jenny/Karen audit fixes to Sprint 5 product detail. `pdBack` used undefined `var(--sans)` — fixed to `var(--font)`. Blank-page trap patched: when `selectedProduct` key is missing from `priceHistory`, a back button + "Item not found" message renders instead of an invisible dead end. `prevTab` state was dead (tab never changes during product navigation) — removed. Insights price mover names now clickable via `selectProduct(c.key)`, making them the 7th entry point to product detail.
+- No known issues.
+
+### 2026-05-22 (8)
+Added product detail view (Sprint 5). `ProductLineGraph` (200px, all dots, accented last point with white border, x/y axes). Clicking any item name in the items table, order drilldowns (overview and orders tab), category drilldown, cart, or price history card opens a full detail view with hero stats (current price, total delta chip, low/high), Chart.js line graph, purchase history table (date/store/qty/price/change), and a multi-store placeholder. Back button or tab switch clears the view.
+- No known issues.
+
 ### 2026-05-22 (7)
 Applied 5 Sprint 4 audit fixes. `cartRow` border switched to `border-top/:first-child` to eliminate the double border between the last cart item and the total strip. `updateCartQty` now clamps at 1 (`Math.max`) so the − button never silently deletes — the explicit × is the only delete path. `cartSearch` cleared in the `[tab]` effect so the search dropdown doesn't reappear when returning to the cart tab. `useMemo` dep array for `computeInsights` expanded to `[orders, catOverrides]`. Watchlist target input gets `placeholder="0.00"`.
 - No known issues.

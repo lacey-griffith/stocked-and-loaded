@@ -1337,7 +1337,7 @@
   padding: 0;
   cursor: pointer;
   margin-bottom: 16px;
-  font-family: var(--sans);
+  font-family: var(--font);
 }
 .pdBack:hover { color: var(--text-primary); }
 

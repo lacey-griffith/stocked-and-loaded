@@ -469,7 +469,6 @@ export default function App() {
   const [drilldownOrder, setDrilldownOrder] = useState(null)
   const [drilldownCat, setDrilldownCat] = useState(null)
   const [selectedProduct, setSelectedProduct] = useState(null)
-  const [prevTab, setPrevTab] = useState('overview')
   const [cart, setCart] = useState(loadCart)
   const [watchlist, setWatchlist] = useState(loadWatchlist)
   const [cartSearch, setCartSearch] = useState('')
@@ -831,7 +830,6 @@ export default function App() {
   }
 
   function selectProduct(key) {
-    setPrevTab(tab)
     setSelectedProduct(key)
   }
 
@@ -924,7 +922,14 @@ export default function App() {
       <main className={styles.main}>
         {selectedProduct && (() => {
           const ph = priceHistory[selectedProduct]
-          if (!ph) return null
+          if (!ph) return (
+            <>
+              <button className={styles.pdBack} onClick={() => setSelectedProduct(null)}>
+                <i className="ti ti-arrow-left" aria-hidden="true" /> Back
+              </button>
+              <p className={styles.moreHint}>Item not found.</p>
+            </>
+          )
           const { name, entries } = ph
           const richHistory = allItems
             .filter(i => (i.productId || i.name) === selectedProduct)
@@ -1357,7 +1362,7 @@ export default function App() {
                     <p className={styles.insightsPriceColLabel}>↑ Increases ({insights.priceJumps.length})</p>
                     {insights.priceJumps.slice(0, 6).map(c => (
                       <div key={c.name} className={styles.insightsPriceRow}>
-                        <span className={styles.insightsPriceName}>{shortName(c.name)}</span>
+                        <button className={`${styles.insightsPriceName} ${styles.pdNameLink}`} onClick={() => selectProduct(c.key)}>{shortName(c.name)}</button>
                         <span className={styles.insightsPriceDeltaUp}>+${c.diff.toFixed(2)} ({c.pct}%)</span>
                       </div>
                     ))}
@@ -1367,7 +1372,7 @@ export default function App() {
                     <p className={styles.insightsPriceColLabel}>↓ Decreases ({insights.priceDrops.length})</p>
                     {insights.priceDrops.slice(0, 6).map(c => (
                       <div key={c.name} className={styles.insightsPriceRow}>
-                        <span className={styles.insightsPriceName}>{shortName(c.name)}</span>
+                        <button className={`${styles.insightsPriceName} ${styles.pdNameLink}`} onClick={() => selectProduct(c.key)}>{shortName(c.name)}</button>
                         <span className={styles.insightsPriceDeltaDown}>-${Math.abs(c.diff).toFixed(2)} ({c.pct}%)</span>
                       </div>
                     ))}
