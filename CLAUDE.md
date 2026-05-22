@@ -11,6 +11,10 @@ After every commit/push, append a log entry to the ## Ship Log section of this f
 
 ## Ship Log
 
+### 2026-05-22 (10)
+Fixed date parsing, chart readability, orders compact view, price history A–Z index, and items load more. `parseDate()` now uses a regex to extract just `Month Day, Year` from HEB timestamps like "Dec 15, 2023, 11:00am–12:00pm", fixing MoM bucketing inflation. Overview bar chart has Per order / Weekly / Monthly toggle with autoSkip + maxTicksLimit:12. Orders tab adds a compact list view (one row per order, expandable). Price history gets an A–Z pill bar that scrolls to the first matching item. Items tab cap raised to 250 with a Load more button (+250/click).
+- No known issues.
+
 ### 2026-05-22 (9)
 Applied 4 Jenny/Karen audit fixes to Sprint 5 product detail. `pdBack` used undefined `var(--sans)` — fixed to `var(--font)`. Blank-page trap patched: when `selectedProduct` key is missing from `priceHistory`, a back button + "Item not found" message renders instead of an invisible dead end. `prevTab` state was dead (tab never changes during product navigation) — removed. Insights price mover names now clickable via `selectProduct(c.key)`, making them the 7th entry point to product detail.
 - No known issues.
