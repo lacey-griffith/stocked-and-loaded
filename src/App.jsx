@@ -139,6 +139,8 @@ export default function App() {
   const [timeRangeMonth, setTimeRangeMonth] = useState(initPrefs.month)
   const [customFrom, setCustomFrom] = useState(initPrefs.from)
   const [customTo, setCustomTo] = useState(initPrefs.to)
+  const [drilldownOrder, setDrilldownOrder] = useState(null)
+  const [drilldownCat, setDrilldownCat] = useState(null)
 
   useEffect(() => { saveOrders(orders) }, [orders])
 
@@ -148,6 +150,11 @@ export default function App() {
         range: timeRange, month: timeRangeMonth, from: customFrom, to: customTo
       }))
     } catch {}
+  }, [timeRange, timeRangeMonth, customFrom, customTo])
+
+  useEffect(() => {
+    setDrilldownOrder(null)
+    setDrilldownCat(null)
   }, [timeRange, timeRangeMonth, customFrom, customTo])
 
   function setCatOverride(key, cat) {
@@ -177,12 +184,15 @@ export default function App() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
   }))].sort()
 
-  const totalSpent = orders.reduce((s, o) => s + (o.totalAmount || 0), 0)
-  const avgOrder = totalSpent / orders.length
-
   const catTotals = {}
   allItems.forEach(i => { catTotals[i.cat] = (catTotals[i.cat] || 0) + i.price })
-  const catSorted = Object.entries(catTotals).sort((a, b) => b[1] - a[1])
+
+  const overviewCatTotals = {}
+  timeFilteredItems.forEach(i => { overviewCatTotals[i.cat] = (overviewCatTotals[i.cat] || 0) + i.price })
+  const overviewCatSorted = Object.entries(overviewCatTotals).sort((a, b) => b[1] - a[1])
+
+  const overviewTotalSpent = timeFilteredOrders.reduce((s, o) => s + (o.totalAmount || 0), 0)
+  const overviewAvgOrder = timeFilteredOrders.length ? overviewTotalSpent / timeFilteredOrders.length : 0
 
   const priceHistory = {}
   allItems.forEach(i => {
@@ -201,8 +211,26 @@ export default function App() {
     .sort((a, b) => b.count - a.count)
     .slice(0, 12)
 
-  const ordersChron = [...orders].sort((a, b) => parseDate(a.date) - parseDate(b.date))
+  const overviewOrders = [...timeFilteredOrders].sort((a, b) => parseDate(a.date) - parseDate(b.date))
   const cats = ['All', ...Object.keys(catTotals).sort()]
+  const drilldownOrderData = drilldownOrder ? orders.find(o => o.orderId === drilldownOrder) : null
+  const drilldownCatItems = drilldownCat
+    ? Object.values(
+        timeFilteredItems
+          .filter(i => i.cat === drilldownCat)
+          .reduce((acc, i) => {
+            const k = i.productId || i.name
+            if (!acc[k]) acc[k] = { name: i.name, count: 0, lastPrice: 0, lastDate: '', totalSpend: 0 }
+            acc[k].count++
+            acc[k].totalSpend += i.price
+            if (!acc[k].lastDate || parseDate(i.orderDate) > parseDate(acc[k].lastDate)) {
+              acc[k].lastDate = i.orderDate
+              acc[k].lastPrice = i.price
+            }
+            return acc
+          }, {})
+      ).sort((a, b) => b.totalSpend - a.totalSpend)
+    : []
   const filtered = timeFilteredItems.filter(i =>
     (filterCat === 'All' || i.cat === filterCat) &&
     (!itemSearch || i.name.toLowerCase().includes(itemSearch.toLowerCase()))
@@ -245,10 +273,10 @@ export default function App() {
         spendChartInst.current = new Chart(spendChartRef.current, {
           type: 'bar',
           data: {
-            labels: ordersChron.map(o => o.date.split(',')[0]),
+            labels: overviewOrders.map(o => o.date.split(',')[0]),
             datasets: [{
               label: 'Order total',
-              data: ordersChron.map(o => o.totalAmount),
+              data: overviewOrders.map(o => o.totalAmount),
               backgroundColor: '#E1251B',
               borderRadius: 5,
               borderSkipped: false,
@@ -268,13 +296,25 @@ export default function App() {
                 ticks: { maxRotation: 35, font: { size: 11, family: 'DM Sans' }, autoSkip: false },
                 grid: { display: false }
               }
-            }
+            },
+            onClick: (evt, elements) => {
+              if (elements.length > 0) {
+                const ord = overviewOrders[elements[0].index]
+                if (ord) {
+                  setDrilldownOrder(prev => prev === ord.orderId ? null : ord.orderId)
+                  setDrilldownCat(null)
+                }
+              }
+            },
+            onHover: (evt, elements) => {
+              if (evt.native?.target) evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'
+            },
           }
         })
       }
-      if (catChartRef.current && catSorted.length) {
+      if (catChartRef.current && overviewCatSorted.length) {
         catChartInst.current?.destroy()
-        const top7 = catSorted.slice(0, 7)
+        const top7 = overviewCatSorted.slice(0, 7)
         catChartInst.current = new Chart(catChartRef.current, {
           type: 'doughnut',
           data: {
@@ -290,13 +330,25 @@ export default function App() {
             responsive: true,
             maintainAspectRatio: false,
             cutout: '65%',
-            plugins: { legend: { display: false } }
+            plugins: { legend: { display: false } },
+            onClick: (evt, elements) => {
+              if (elements.length > 0) {
+                const cat = top7[elements[0].index]?.[0]
+                if (cat) {
+                  setDrilldownCat(prev => prev === cat ? null : cat)
+                  setDrilldownOrder(null)
+                }
+              }
+            },
+            onHover: (evt, elements) => {
+              if (evt.native?.target) evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'
+            },
           }
         })
       }
     }, 150)
     return () => { clearTimeout(timer) }
-  }, [tab, orders, catOverrides])
+  }, [tab, orders, catOverrides, timeRange, timeRangeMonth, customFrom, customTo])
 
   async function handleScreenshot(e) {
     const file = e.target.files?.[0]
@@ -433,9 +485,9 @@ export default function App() {
         </div>
         {isFiltered && (
           <span className={styles.timeFilterIndicator}>
-            {tab === 'orders'
-              ? `${timeFilteredOrders.length} of ${orders.length} orders`
-              : `${timeFilteredItems.length} of ${allItems.length} items`}
+            {tab === 'items'
+              ? `${timeFilteredItems.length} of ${allItems.length} items`
+              : `${timeFilteredOrders.length} of ${orders.length} orders`}
           </span>
         )}
       </div>
@@ -525,22 +577,23 @@ export default function App() {
       <main className={styles.main}>
         {tab === 'overview' && (
           <>
+            <TimeFilterBar />
             <div className={styles.metrics}>
               <div className={styles.metric}>
                 <span className={styles.metricLabel}>Total spent</span>
-                <span className={styles.metricValue}>${totalSpent.toFixed(2)}</span>
+                <span className={styles.metricValue}>${overviewTotalSpent.toFixed(2)}</span>
               </div>
               <div className={styles.metric}>
                 <span className={styles.metricLabel}>Orders</span>
-                <span className={styles.metricValue}>{orders.length}</span>
+                <span className={styles.metricValue}>{timeFilteredOrders.length}</span>
               </div>
               <div className={styles.metric}>
                 <span className={styles.metricLabel}>Avg per order</span>
-                <span className={styles.metricValue}>${avgOrder.toFixed(2)}</span>
+                <span className={styles.metricValue}>${overviewAvgOrder.toFixed(2)}</span>
               </div>
               <div className={styles.metric}>
                 <span className={styles.metricLabel}>Items tracked</span>
-                <span className={styles.metricValue}>{allItems.length}</span>
+                <span className={styles.metricValue}>{timeFilteredItems.length}</span>
               </div>
             </div>
 
@@ -557,7 +610,7 @@ export default function App() {
                   <canvas ref={catChartRef} role="img" aria-label="Donut chart of spending by category" />
                 </div>
                 <div className={styles.legend}>
-                  {catSorted.slice(0, 7).map(([cat, val]) => (
+                  {overviewCatSorted.slice(0, 7).map(([cat, val]) => (
                     <span key={cat} className={styles.legendItem}>
                       <span className={styles.legendDot} style={{ background: CAT_COLORS[cat] || '#888' }} />
                       {cat} <span className={styles.legendVal}>${val.toFixed(0)}</span>
@@ -566,6 +619,62 @@ export default function App() {
                 </div>
               </div>
             </div>
+
+            {drilldownOrderData && (
+              <div className={styles.drilldownPanel}>
+                <div className={styles.drilldownHeader}>
+                  <div>
+                    <p className={styles.orderDate}>{drilldownOrderData.date}</p>
+                    <p className={styles.orderLocation}>{drilldownOrderData.header}</p>
+                  </div>
+                  <div className={styles.orderMeta}>
+                    <p className={styles.orderTotal}>${(drilldownOrderData.totalAmount || 0).toFixed(2)}</p>
+                    <p className={styles.orderSub}>{drilldownOrderData.itemCount} items</p>
+                  </div>
+                  <button className={styles.drilldownClose} onClick={() => setDrilldownOrder(null)}>
+                    <i className="ti ti-x" aria-hidden="true" />
+                  </button>
+                </div>
+                <div className={styles.orderItems}>
+                  {(drilldownOrderData.items || []).filter(i => i.price > 0).map((item, idx) => {
+                    const cat = catOverrides[item.productId || item.name] || categorize(item.name)
+                    return (
+                      <div key={idx} className={styles.orderItem}>
+                        <span className={styles.catDot} style={{ background: CAT_COLORS[cat], boxShadow: `0 0 0 3px ${CAT_BG[cat] || '#f3f4f6'}` }} />
+                        <span className={styles.orderItemName}>{item.name}</span>
+                        <span className={styles.orderItemMeta}>
+                          {item.quantity && <span>{item.quantity} · </span>}
+                          ${(item.price || 0).toFixed(2)}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {drilldownCat && (
+              <div className={styles.drilldownPanel}>
+                <div className={styles.drilldownHeader}>
+                  <div>
+                    <p className={styles.orderDate}>{drilldownCat}</p>
+                    <p className={styles.orderLocation}>${(overviewCatTotals[drilldownCat] || 0).toFixed(2)} total spend</p>
+                  </div>
+                  <button className={styles.drilldownClose} onClick={() => setDrilldownCat(null)}>
+                    <i className="ti ti-x" aria-hidden="true" />
+                  </button>
+                </div>
+                <div className={styles.orderItems}>
+                  {drilldownCatItems.map((item, idx) => (
+                    <div key={idx} className={styles.orderItem}>
+                      <span className={styles.catDot} style={{ background: CAT_COLORS[drilldownCat] || '#888' }} />
+                      <span className={styles.orderItemName}>{item.name}</span>
+                      <span className={styles.orderItemMeta}>×{item.count} · ${item.lastPrice.toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className={styles.card}>
               <p className={styles.cardLabel}>Top repeat buys</p>
