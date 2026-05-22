@@ -11,6 +11,10 @@ After every commit/push, append a log entry to the ## Ship Log section of this f
 
 ## Ship Log
 
+### 2026-05-22 (11)
+Completed product detail view. Re-added `prevTab` state — `selectProduct()` now captures the current tab, and Back calls `setTab(prevTab)` so it reliably returns to the originating tab. Low/High hero stats now show the date of that price. Added a gray rounded image placeholder card (ti-photo, "Image coming soon") between the graph and the purchase history table. Replaced the plain multi-store text with a dashed-border card (ti-building-store icon, "Price comparison across stores coming soon").
+- No known issues.
+
 ### 2026-05-22 (10)
 Fixed date parsing, chart readability, orders compact view, price history A–Z index, and items load more. `parseDate()` now uses a regex to extract just `Month Day, Year` from HEB timestamps like "Dec 15, 2023, 11:00am–12:00pm", fixing MoM bucketing inflation. Overview bar chart has Per order / Weekly / Monthly toggle with autoSkip + maxTicksLimit:12. Orders tab adds a compact list view (one row per order, expandable). Price history gets an A–Z pill bar that scrolls to the first matching item. Items tab cap raised to 250 with a Load more button (+250/click).
 - No known issues.
