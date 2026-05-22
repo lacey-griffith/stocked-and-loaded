@@ -83,6 +83,72 @@ function inRange(dateStr, bounds) {
   return d >= bounds.from && d <= bounds.to
 }
 
+function computeInsights(orders, allItems) {
+  const now = new Date()
+  const curY = now.getFullYear()
+  const curM = now.getMonth()
+  const prevY = curM === 0 ? curY - 1 : curY
+  const prevM = curM === 0 ? 11 : curM - 1
+
+  const inMonth = (dateStr, y, m) => {
+    const d = parseDate(dateStr)
+    return d.getFullYear() === y && d.getMonth() === m
+  }
+
+  const currentMonth = orders
+    .filter(o => inMonth(o.date, curY, curM))
+    .reduce((s, o) => s + (o.totalAmount || 0), 0)
+  const prevMonth = orders
+    .filter(o => inMonth(o.date, prevY, prevM))
+    .reduce((s, o) => s + (o.totalAmount || 0), 0)
+  const momDelta = prevMonth > 0 ? currentMonth - prevMonth : null
+
+  const priceMapByKey = {}
+  allItems.forEach(i => {
+    const k = i.productId || i.name
+    if (!priceMapByKey[k]) priceMapByKey[k] = { name: i.name, entries: [] }
+    priceMapByKey[k].entries.push({ date: i.orderDate, unitPrice: i.unitPrice })
+  })
+
+  const allChanges = []
+  Object.values(priceMapByKey).forEach(({ name, entries }) => {
+    if (entries.length < 2) return
+    entries.sort((a, b) => parseDate(a.date) - parseDate(b.date))
+    const first = parseUnitPrice(entries[0].unitPrice)
+    const last = parseUnitPrice(entries[entries.length - 1].unitPrice)
+    if (first <= 0 || last <= 0) return
+    const diff = last - first
+    if (Math.abs(diff) < 0.01) return
+    const pct = Math.round(Math.abs(diff / first) * 100)
+    allChanges.push({ name, diff, pct, first, last })
+  })
+
+  const priceChanges = allChanges.length
+  const priceJumps = allChanges.filter(c => c.diff > 0).sort((a, b) => b.diff - a.diff)
+  const priceDrops = allChanges.filter(c => c.diff < 0).sort((a, b) => a.diff - b.diff)
+  const biggestJump = priceJumps[0] || null
+  const biggestDrop = priceDrops[0] || null
+
+  const curCatTotals = {}
+  const prevCatTotals = {}
+  allItems.forEach(i => {
+    if (inMonth(i.orderDate, curY, curM)) curCatTotals[i.cat] = (curCatTotals[i.cat] || 0) + i.price
+    if (inMonth(i.orderDate, prevY, prevM)) prevCatTotals[i.cat] = (prevCatTotals[i.cat] || 0) + i.price
+  })
+
+  const allCatKeys = new Set([...Object.keys(curCatTotals), ...Object.keys(prevCatTotals)])
+  const catDeltas = [...allCatKeys].map(cat => ({
+    cat,
+    cur: curCatTotals[cat] || 0,
+    prev: prevCatTotals[cat] || 0,
+    growth: (curCatTotals[cat] || 0) - (prevCatTotals[cat] || 0),
+  })).sort((a, b) => Math.abs(b.growth) - Math.abs(a.growth))
+
+  const categoryTrend = catDeltas.find(c => c.prev > 0) || null
+
+  return { currentMonth, prevMonth, momDelta, priceChanges, biggestJump, biggestDrop, categoryTrend, priceJumps, priceDrops, catDeltas }
+}
+
 function PriceChips({ entries }) {
   return (
     <div className={styles.priceEntries}>
@@ -364,6 +430,8 @@ export default function App() {
       return { ...i, orderDate: o.date, orderId: o.orderId, cat: catOverrides[k] || categorize(i.name) }
     })
   )
+
+  const insights = computeInsights(orders, allItems)
 
   // Time-filtered views for orders + items tabs
   const bounds = getDateBounds(timeRange, customFrom, customTo, timeRangeMonth)
@@ -686,7 +754,7 @@ export default function App() {
       )}
 
       <nav className={styles.tabs}>
-        {['overview', 'orders', 'items', 'price history'].map(t => (
+        {['overview', 'orders', 'items', 'price history', 'insights'].map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -696,6 +764,7 @@ export default function App() {
             {t === 'orders' && <i className="ti ti-shopping-cart" aria-hidden="true" />}
             {t === 'items' && <i className="ti ti-list" aria-hidden="true" />}
             {t === 'price history' && <i className="ti ti-chart-line" aria-hidden="true" />}
+            {t === 'insights' && <i className="ti ti-bulb" aria-hidden="true" />}
             {t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
@@ -810,6 +879,38 @@ export default function App() {
                 </div>
               </div>
             )}
+
+            <div className={styles.insightsCard}>
+              <p className={styles.cardLabel}>This month at a glance</p>
+              <div className={styles.insightsStats}>
+                <div className={styles.insightsStat}>
+                  <span className={styles.insightsStatLabel}>This month</span>
+                  <span className={styles.insightsStatValue}>${insights.currentMonth.toFixed(2)}</span>
+                </div>
+                <div className={styles.insightsStat}>
+                  <span className={styles.insightsStatLabel}>vs last month</span>
+                  <span className={`${styles.insightsStatValue} ${insights.momDelta != null ? (insights.momDelta > 0 ? styles.insightsDeltaUp : styles.insightsDeltaDown) : ''}`}>
+                    {insights.momDelta != null
+                      ? `${insights.momDelta > 0 ? '+' : ''}$${Math.abs(insights.momDelta).toFixed(2)}`
+                      : '—'}
+                  </span>
+                </div>
+                <div className={styles.insightsStat}>
+                  <span className={styles.insightsStatLabel}>Price changes</span>
+                  <span className={styles.insightsStatValue}>{insights.priceChanges}</span>
+                </div>
+              </div>
+              <div className={styles.insightsFooter}>
+                <span className={styles.insightsFooterNote}>
+                  {insights.biggestJump && `↑ ${shortName(insights.biggestJump.name)} +$${insights.biggestJump.diff.toFixed(2)} (${insights.biggestJump.pct}%)`}
+                  {insights.biggestJump && insights.biggestDrop && ' · '}
+                  {insights.biggestDrop && `↓ ${shortName(insights.biggestDrop.name)} -$${Math.abs(insights.biggestDrop.diff).toFixed(2)} (${insights.biggestDrop.pct}%)`}
+                </span>
+                <button className={styles.insightsLink} onClick={() => setTab('insights')}>
+                  View insights →
+                </button>
+              </div>
+            </div>
 
             <div className={styles.card}>
               <p className={styles.cardLabel}>Top repeat buys</p>
@@ -962,6 +1063,88 @@ export default function App() {
             </div>
           </>
         )}
+
+        {tab === 'insights' && (() => {
+          const now = new Date()
+          const curLabel = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+          const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+          const prevLabel = prevDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+          return (
+            <>
+              <div className={styles.card}>
+                <p className={styles.cardLabel}>Month over month</p>
+                <div className={styles.insightsMonthRow}>
+                  <div className={styles.insightsMonthBox}>
+                    <span className={styles.insightsStatLabel}>{curLabel}</span>
+                    <span className={styles.insightsStatValue}>${insights.currentMonth.toFixed(2)}</span>
+                  </div>
+                  <div className={styles.insightsMonthBox}>
+                    <span className={styles.insightsStatLabel}>{prevLabel}</span>
+                    <span className={styles.insightsStatValue}>${insights.prevMonth.toFixed(2)}</span>
+                  </div>
+                  {insights.momDelta != null && (
+                    <div className={styles.insightsMonthBox}>
+                      <span className={styles.insightsStatLabel}>Change</span>
+                      <span className={`${styles.insightsStatValue} ${insights.momDelta > 0 ? styles.insightsDeltaUp : styles.insightsDeltaDown}`}>
+                        {insights.momDelta > 0 ? '+' : ''}${Math.abs(insights.momDelta).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className={styles.card}>
+                <p className={styles.cardLabel}>Price movers</p>
+                <div className={styles.insightsPriceCols}>
+                  <div>
+                    <p className={styles.insightsPriceColLabel}>↑ Increases ({insights.priceJumps.length})</p>
+                    {insights.priceJumps.slice(0, 6).map((c, i) => (
+                      <div key={i} className={styles.insightsPriceRow}>
+                        <span className={styles.insightsPriceName}>{shortName(c.name)}</span>
+                        <span className={styles.insightsPriceDeltaUp}>+${c.diff.toFixed(2)} ({c.pct}%)</span>
+                      </div>
+                    ))}
+                    {insights.priceJumps.length === 0 && <p className={styles.insightsEmpty}>None</p>}
+                  </div>
+                  <div>
+                    <p className={styles.insightsPriceColLabel}>↓ Decreases ({insights.priceDrops.length})</p>
+                    {insights.priceDrops.slice(0, 6).map((c, i) => (
+                      <div key={i} className={styles.insightsPriceRow}>
+                        <span className={styles.insightsPriceName}>{shortName(c.name)}</span>
+                        <span className={styles.insightsPriceDeltaDown}>-${Math.abs(c.diff).toFixed(2)} ({c.pct}%)</span>
+                      </div>
+                    ))}
+                    {insights.priceDrops.length === 0 && <p className={styles.insightsEmpty}>None</p>}
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.card}>
+                <p className={styles.cardLabel}>Category trends (MoM)</p>
+                <div className={styles.insightsCatList}>
+                  {insights.catDeltas.filter(c => c.prev > 0).slice(0, 8).map(c => {
+                    const pct = Math.min(100, Math.abs(c.growth / Math.max(c.prev, 0.01)) * 100)
+                    return (
+                      <div key={c.cat} className={styles.insightsCatRow}>
+                        <span className={styles.legendDot} style={{ background: CAT_COLORS[c.cat] || '#888' }} />
+                        <span className={styles.insightsCatName}>{c.cat}</span>
+                        <span className={styles.insightsCatBar}>
+                          <span className={styles.insightsCatBarFill} style={{ width: `${pct}%`, background: c.growth > 0 ? '#FCCACA' : '#B7E4CC' }} />
+                        </span>
+                        <span className={c.growth > 0 ? styles.insightsDeltaUp : styles.insightsDeltaDown} style={{ fontSize: 12, fontFamily: 'var(--mono)', flexShrink: 0 }}>
+                          {c.growth > 0 ? '+' : ''}${c.growth.toFixed(2)}
+                        </span>
+                      </div>
+                    )
+                  })}
+                  {insights.catDeltas.filter(c => c.prev > 0).length === 0 && (
+                    <p className={styles.insightsEmpty}>No prior month data to compare</p>
+                  )}
+                </div>
+              </div>
+            </>
+          )
+        })()}
       </main>
     </div>
   )
