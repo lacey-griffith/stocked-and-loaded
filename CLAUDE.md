@@ -11,6 +11,10 @@ After every commit/push, append a log entry to the ## Ship Log section of this f
 
 ## Ship Log
 
+### 2026-05-22 (16)
+Added Recipes tab (ti-tools-kitchen). List view shows a card per recipe with total cost, cost-per-serving, servings count, and a "Good time to make" green chip or "X ingredients above avg" amber chip based on live price comparison. Detail view: inline-editable recipe name, stat row with servings +/- stepper (costs update live), ingredient search that draws from order history (ti-history icon) with catalog fallback for manually priced items. Ingredient table shows qty (editable), current unit price, subtotal, and At low / Normal / Above avg / Catalog status chips. Delete recipe with confirmation. All data persists to localStorage under stocked_loaded_recipes_v1.
+- No known issues.
+
 ### 2026-05-22 (15)
 Added "Volatile repeat buys" filter shortcut to Price History tab. Three pill buttons above the search input — All items (default), Volatile repeat buys (3+ entries AND >10% price range, sorted by volatility% × entry count descending), and Price changed recently (last entry differs from previous). The volatile pill shows a live count badge in red. Both filters combine with the existing search. Empty state updated to handle filter-with-no-results.
 - No known issues.

@@ -63,6 +63,11 @@ function loadWatchlist() {
   } catch { return [] }
 }
 
+const RECIPES_KEY = 'stocked_loaded_recipes_v1'
+function loadRecipes() {
+  try { return JSON.parse(localStorage.getItem(RECIPES_KEY)) || [] } catch { return [] }
+}
+
 function parseDate(str) {
   const m = str.match(/([A-Za-z]+ \d+,\s*\d{4})/)
   if (m) return new Date(m[1])
@@ -474,6 +479,12 @@ export default function App() {
   const [prevTab, setPrevTab] = useState('overview')
   const [cart, setCart] = useState(loadCart)
   const [watchlist, setWatchlist] = useState(loadWatchlist)
+  const [recipes, setRecipes] = useState(loadRecipes)
+  const [selectedRecipe, setSelectedRecipe] = useState(null)
+  const [recipeIngSearch, setRecipeIngSearch] = useState('')
+  const [catalogPending, setCatalogPending] = useState(null)
+  const [catalogPriceInput, setCatalogPriceInput] = useState('')
+  const [editingRecipeName, setEditingRecipeName] = useState(false)
   const [cartSearch, setCartSearch] = useState('')
   const [chartBucket, setChartBucket] = useState('order')
   const [ordersView, setOrdersView] = useState('card')
@@ -500,6 +511,10 @@ export default function App() {
     setDrilldownCat(null)
     setCartSearch('')
     setSelectedProduct(null)
+    setSelectedRecipe(null)
+    setRecipeIngSearch('')
+    setCatalogPending(null)
+    setEditingRecipeName(false)
   }, [tab])
 
   useEffect(() => { setItemsVisible(250) }, [itemSearch, filterCat, sortCol, sortDir])
@@ -507,6 +522,10 @@ export default function App() {
   useEffect(() => {
     try { localStorage.setItem(CART_KEY, JSON.stringify(cart)) } catch {}
   }, [cart])
+
+  useEffect(() => {
+    try { localStorage.setItem(RECIPES_KEY, JSON.stringify(recipes)) } catch {}
+  }, [recipes])
 
   useEffect(() => {
     try { localStorage.setItem(WATCHLIST_KEY, JSON.stringify(watchlist)) } catch {}
@@ -544,6 +563,70 @@ export default function App() {
 
   function updateWatchTarget(key, val) {
     setWatchlist(prev => prev.map(w => w.key === key ? { ...w, targetPrice: val } : w))
+  }
+
+  function ingCurrentPrice(ing) {
+    if (ing.source === 'catalog') return parseFloat(ing.unitPrice) || 0
+    const entries = priceHistory[ing.key]?.entries || []
+    return parseUnitPrice(entries[entries.length - 1]?.unitPrice)
+  }
+
+  function ingStatus(ing) {
+    if (ing.source === 'catalog') return 'catalog'
+    const entries = priceHistory[ing.key]?.entries || []
+    const prices = entries.map(e => parseUnitPrice(e.unitPrice)).filter(p => p > 0)
+    if (prices.length < 2) return 'normal'
+    const avg = prices.reduce((a, b) => a + b, 0) / prices.length
+    const current = prices[prices.length - 1]
+    if (current <= avg * 0.95) return 'low'
+    if (current >= avg * 1.05) return 'above'
+    return 'normal'
+  }
+
+  function recipeChipInfo(recipe) {
+    const histIng = recipe.ingredients.filter(i => i.source === 'history')
+    if (!histIng.length) return null
+    const aboveCount = histIng.filter(i => ingStatus(i) === 'above').length
+    if (aboveCount === 0) return { type: 'good', label: 'Good time to make' }
+    return { type: 'warn', label: `${aboveCount} ingredient${aboveCount > 1 ? 's' : ''} above avg` }
+  }
+
+  function recipeTotalCost(recipe) {
+    return recipe.ingredients.reduce((sum, ing) => sum + ingCurrentPrice(ing) * (parseFloat(ing.qty) || 0), 0)
+  }
+
+  function createRecipe() {
+    const id = 'recipe_' + Date.now()
+    setRecipes(prev => [...prev, { id, name: 'New recipe', servings: 4, ingredients: [] }])
+    setSelectedRecipe(id)
+    setEditingRecipeName(true)
+  }
+
+  function deleteRecipe(id) {
+    setRecipes(prev => prev.filter(r => r.id !== id))
+    setSelectedRecipe(null)
+  }
+
+  function updateRecipe(id, patch) {
+    setRecipes(prev => prev.map(r => r.id === id ? { ...r, ...patch } : r))
+  }
+
+  function addIngredient(recipeId, ingredient) {
+    setRecipes(prev => prev.map(r => r.id === recipeId ? { ...r, ingredients: [...r.ingredients, ingredient] } : r))
+    setRecipeIngSearch('')
+    setCatalogPending(null)
+    setCatalogPriceInput('')
+  }
+
+  function removeIngredient(recipeId, ingKey) {
+    setRecipes(prev => prev.map(r => r.id === recipeId ? { ...r, ingredients: r.ingredients.filter(i => i.key !== ingKey) } : r))
+  }
+
+  function updateIngredient(recipeId, ingKey, patch) {
+    setRecipes(prev => prev.map(r => r.id === recipeId
+      ? { ...r, ingredients: r.ingredients.map(i => i.key === ingKey ? { ...i, ...patch } : i) }
+      : r
+    ))
   }
 
   function setCatOverride(key, cat) {
@@ -606,6 +689,13 @@ export default function App() {
     ? Object.entries(priceHistory)
         .filter(([, v]) => v.name.toLowerCase().includes(cartSearch.toLowerCase().trim()))
         .filter(([k]) => !cart.find(c => c.key === k))
+        .slice(0, 8)
+        .map(([k, v]) => ({ key: k, name: v.name }))
+    : []
+
+  const recipeIngSearchResults = recipeIngSearch.trim()
+    ? Object.entries(priceHistory)
+        .filter(([, v]) => v.name.toLowerCase().includes(recipeIngSearch.toLowerCase().trim()))
         .slice(0, 8)
         .map(([k, v]) => ({ key: k, name: v.name }))
     : []
@@ -973,7 +1063,7 @@ export default function App() {
       )}
 
       <nav className={styles.tabs}>
-        {['overview', 'cart', 'orders', 'items', 'price history', 'insights'].map(t => (
+        {['overview', 'cart', 'orders', 'items', 'price history', 'insights', 'recipes'].map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -985,6 +1075,7 @@ export default function App() {
             {t === 'items' && <i className="ti ti-list" aria-hidden="true" />}
             {t === 'price history' && <i className="ti ti-chart-line" aria-hidden="true" />}
             {t === 'insights' && <i className="ti ti-bulb" aria-hidden="true" />}
+            {t === 'recipes' && <i className="ti ti-tools-kitchen" aria-hidden="true" />}
             {t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
@@ -1717,6 +1808,179 @@ export default function App() {
             </div>
             )}
           </>
+        )}
+        {!selectedProduct && tab === 'recipes' && (
+          selectedRecipe ? (() => {
+            const recipe = recipes.find(r => r.id === selectedRecipe)
+            if (!recipe) return null
+            const totalCost = recipeTotalCost(recipe)
+            const costPerServing = recipe.servings > 0 ? totalCost / recipe.servings : 0
+            const chip = recipeChipInfo(recipe)
+            return (
+              <>
+                <button className={styles.pdBack} onClick={() => { setSelectedRecipe(null); setEditingRecipeName(false); setRecipeIngSearch(''); setCatalogPending(null) }}>
+                  <i className="ti ti-arrow-left" aria-hidden="true" /> Back
+                </button>
+                {editingRecipeName ? (
+                  <input
+                    className={styles.recipeNameInput}
+                    value={recipe.name}
+                    autoFocus
+                    onChange={e => updateRecipe(recipe.id, { name: e.target.value })}
+                    onBlur={() => setEditingRecipeName(false)}
+                    onKeyDown={e => { if (e.key === 'Enter') setEditingRecipeName(false) }}
+                  />
+                ) : (
+                  <h2 className={styles.recipeDetailName} onClick={() => setEditingRecipeName(true)}>
+                    {recipe.name} <i className="ti ti-pencil" style={{ fontSize: 14, opacity: 0.35 }} aria-hidden="true" />
+                  </h2>
+                )}
+                <div className={styles.card}>
+                  <div className={styles.recipeStatRow}>
+                    <div className={styles.recipeStatBox}>
+                      <span className={styles.recipeStatLabel}>Total cost</span>
+                      <span className={styles.recipeStatValue}>${totalCost.toFixed(2)}</span>
+                    </div>
+                    <div className={styles.recipeStatBox}>
+                      <span className={styles.recipeStatLabel}>Servings</span>
+                      <div className={styles.recipeServingsStepper}>
+                        <button aria-label="Decrease servings" onClick={() => updateRecipe(recipe.id, { servings: Math.max(1, recipe.servings - 1) })}>−</button>
+                        <span className={styles.recipeServingsVal}>{recipe.servings}</span>
+                        <button aria-label="Increase servings" onClick={() => updateRecipe(recipe.id, { servings: recipe.servings + 1 })}>+</button>
+                      </div>
+                    </div>
+                    <div className={styles.recipeStatBox}>
+                      <span className={styles.recipeStatLabel}>Per serving</span>
+                      <span className={styles.recipeStatValue}>${costPerServing.toFixed(2)}</span>
+                    </div>
+                    {chip && <span className={chip.type === 'good' ? styles.recipeGoodChip : styles.recipeWarnChip}>{chip.label}</span>}
+                  </div>
+                </div>
+                <div className={styles.recipeIngSearchWrap}>
+                  <div style={{ position: 'relative' }}>
+                    <i className="ti ti-search" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: 16 }} aria-hidden="true" />
+                    <input
+                      placeholder="Add ingredient from order history…"
+                      value={recipeIngSearch}
+                      onChange={e => { setRecipeIngSearch(e.target.value); setCatalogPending(null); setCatalogPriceInput('') }}
+                      style={{ paddingLeft: 34 }}
+                      autoComplete="off"
+                    />
+                  </div>
+                  {recipeIngSearch.trim() && !catalogPending && (
+                    <div className={styles.recipeIngResults}>
+                      {recipeIngSearchResults.map(item => (
+                        <button key={item.key} className={styles.recipeIngResultItem} onClick={() => {
+                          const entries = priceHistory[item.key]?.entries || []
+                          addIngredient(recipe.id, { key: item.key, name: item.name, qty: 1, unit: 'ea', unitPrice: entries[entries.length - 1]?.unitPrice || '', source: 'history' })
+                        }}>
+                          <i className="ti ti-history" aria-hidden="true" />
+                          <span>{item.name}</span>
+                        </button>
+                      ))}
+                      <button className={`${styles.recipeIngResultItem} ${styles.recipeIngCatalogOpt}`} onClick={() => { setCatalogPending({ name: recipeIngSearch.trim() }); setCatalogPriceInput('') }}>
+                        <i className="ti ti-plus" aria-hidden="true" />
+                        <span>Add &ldquo;{recipeIngSearch.trim()}&rdquo; to catalog…</span>
+                      </button>
+                    </div>
+                  )}
+                  {catalogPending && (
+                    <div className={styles.recipeCatalogForm}>
+                      <span className={styles.recipeCatalogName}>{catalogPending.name}</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>$</span>
+                      <input
+                        type="number"
+                        className={styles.recipeCatalogPriceInput}
+                        placeholder="Est. price"
+                        value={catalogPriceInput}
+                        min="0"
+                        step="0.01"
+                        autoFocus
+                        onChange={e => setCatalogPriceInput(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && catalogPriceInput) addIngredient(recipe.id, { key: 'catalog_' + Date.now(), name: catalogPending.name, qty: 1, unit: 'ea', unitPrice: catalogPriceInput, source: 'catalog' })
+                          if (e.key === 'Escape') { setCatalogPending(null); setCatalogPriceInput('') }
+                        }}
+                      />
+                      <button className="primary" disabled={!catalogPriceInput} onClick={() => addIngredient(recipe.id, { key: 'catalog_' + Date.now(), name: catalogPending.name, qty: 1, unit: 'ea', unitPrice: catalogPriceInput, source: 'catalog' })}>Add</button>
+                      <button onClick={() => { setCatalogPending(null); setCatalogPriceInput('') }}>Cancel</button>
+                    </div>
+                  )}
+                </div>
+                {recipe.ingredients.length > 0 ? (
+                  <div className={styles.card} style={{ padding: 0, overflow: 'hidden' }}>
+                    <div className={styles.recipeIngHead}>
+                      <span>Ingredient</span><span>Qty</span><span>Unit price</span><span>Subtotal</span><span>Status</span><span />
+                    </div>
+                    {recipe.ingredients.map(ing => {
+                      const cp = ingCurrentPrice(ing)
+                      const sub = cp * (parseFloat(ing.qty) || 0)
+                      const st = ingStatus(ing)
+                      const chipClass = st === 'low' ? styles.recipeChipLow : st === 'above' ? styles.recipeChipAbove : st === 'catalog' ? styles.recipeChipCatalog : styles.recipeChipNormal
+                      const chipLabel = st === 'low' ? 'At low' : st === 'above' ? 'Above avg' : st === 'catalog' ? 'Catalog' : 'Normal'
+                      return (
+                        <div key={ing.key} className={styles.recipeIngRow}>
+                          <span className={styles.recipeIngName}>{ing.name}</span>
+                          <input type="number" className={styles.recipeIngQtyInput} value={ing.qty} min="0" step="0.1" onChange={e => updateIngredient(recipe.id, ing.key, { qty: e.target.value })} />
+                          <span className={styles.recipeIngPrice}>
+                            {ing.source === 'catalog'
+                              ? <span className={styles.recipeIngCatalogPrice}><span style={{ color: 'var(--text-muted)', fontSize: 12 }}>$</span><input type="number" className={styles.recipeIngQtyInput} value={ing.unitPrice} min="0" step="0.01" style={{ width: 60 }} onChange={e => updateIngredient(recipe.id, ing.key, { unitPrice: e.target.value })} /></span>
+                              : cp > 0 ? `$${cp.toFixed(2)}` : '—'}
+                          </span>
+                          <span className={styles.recipeIngSubtotal}>{sub > 0 ? `$${sub.toFixed(2)}` : '—'}</span>
+                          <span className={chipClass}>{chipLabel}</span>
+                          <button className={styles.recipeIngRemove} aria-label={`Remove ${ing.name}`} onClick={() => removeIngredient(recipe.id, ing.key)}><i className="ti ti-x" aria-hidden="true" /></button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className={styles.recipeEmptyState}>
+                    <i className="ti ti-tools-kitchen" aria-hidden="true" />
+                    <span>Search for ingredients above to build this recipe</span>
+                  </div>
+                )}
+                <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end' }}>
+                  <button className={styles.recipeDeleteBtn} onClick={() => { if (window.confirm(`Delete "${recipe.name}"?`)) deleteRecipe(recipe.id) }}>
+                    <i className="ti ti-trash" aria-hidden="true" /> Delete recipe
+                  </button>
+                </div>
+              </>
+            )
+          })() : (
+            <>
+              <div className={styles.recipesListHeader}>
+                <p className={styles.sectionHint}>{recipes.length} recipe{recipes.length !== 1 ? 's' : ''} · Costs based on current prices</p>
+                <button className="primary" onClick={createRecipe}><i className="ti ti-plus" aria-hidden="true" /> New recipe</button>
+              </div>
+              {recipes.length === 0 ? (
+                <div className={styles.recipeEmptyState}>
+                  <i className="ti ti-tools-kitchen" aria-hidden="true" />
+                  <span>No recipes yet — hit New recipe to get started</span>
+                </div>
+              ) : recipes.map(recipe => {
+                const totalCost = recipeTotalCost(recipe)
+                const costPerServing = recipe.servings > 0 ? totalCost / recipe.servings : 0
+                const chip = recipeChipInfo(recipe)
+                return (
+                  <div key={recipe.id} className={styles.recipeCard} onClick={() => setSelectedRecipe(recipe.id)}>
+                    <div className={styles.recipeCardTop}>
+                      <span className={styles.recipeCardName}>{recipe.name}</span>
+                      {chip && <span className={chip.type === 'good' ? styles.recipeGoodChip : styles.recipeWarnChip}>{chip.label}</span>}
+                    </div>
+                    <div className={styles.recipeCardStats}>
+                      <span>{recipe.servings} serving{recipe.servings !== 1 ? 's' : ''}</span>
+                      <span className={styles.recipeCardDot}>·</span>
+                      <span>Total <strong>${totalCost.toFixed(2)}</strong></span>
+                      <span className={styles.recipeCardDot}>·</span>
+                      <span>${costPerServing.toFixed(2)}/serving</span>
+                      {recipe.ingredients.length > 0 && <><span className={styles.recipeCardDot}>·</span><span>{recipe.ingredients.length} ingredient{recipe.ingredients.length !== 1 ? 's' : ''}</span></>}
+                    </div>
+                  </div>
+                )
+              })}
+            </>
+          )
         )}
       </main>
     </div>
