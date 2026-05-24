@@ -489,7 +489,6 @@ export default function App() {
   const [chartBucket, setChartBucket] = useState('order')
   const [ordersView, setOrdersView] = useState('card')
   const [itemsVisible, setItemsVisible] = useState(250)
-  const phLetterRefs = useRef({})
 
   useEffect(() => { saveOrders(orders) }, [orders])
 
@@ -1552,47 +1551,18 @@ export default function App() {
               </div>
             </div>
             <p className={styles.sectionHint}>Items bought more than once, sorted by number of price changes.</p>
-            {(() => {
-              const availableLetters = new Set(filteredPriceHistory.map(p => p.name[0]?.toUpperCase()).filter(Boolean))
-              const firstOfLetter = {}
-              filteredPriceHistory.forEach(p => {
-                const l = p.name[0]?.toUpperCase()
-                if (l && !firstOfLetter[l]) firstOfLetter[l] = p.key
-              })
-              return (
-                <>
-                  <div className={styles.phAlphaBar}>
-                    {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(letter => (
-                      <button
-                        key={letter}
-                        className={`${styles.phAlphaBtn} ${!availableLetters.has(letter) ? styles.phAlphaBtnDisabled : ''}`}
-                        disabled={!availableLetters.has(letter)}
-                        title={!availableLetters.has(letter) ? `No items starting with ${letter}` : undefined}
-                        onClick={() => phLetterRefs.current[letter]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })}
-                      >
-                        {letter}
-                      </button>
-                    ))}
-                  </div>
-                  <div className={styles.priceList}>
-                    {filteredPriceHistory.length === 0 ? (
-                      <div className={styles.phEmptyState}>
-                        <i className="ti ti-search" aria-hidden="true" />
-                        <span>{priceSearch ? `No items matching "${priceSearch}"` : 'No items match this filter'}</span>
-                      </div>
-                    ) : filteredPriceHistory.map(item => {
-                      const letter = item.name[0]?.toUpperCase()
-                      const isAnchor = letter && firstOfLetter[letter] === item.key
-                      return (
-                        <div key={item.key} ref={isAnchor ? el => { if (el) phLetterRefs.current[letter] = el } : null}>
-                          <PriceHistoryCard item={item} onSelect={selectProduct} />
-                        </div>
-                      )
-                    })}
-                  </div>
-                </>
-              )
-            })()}
+            <div className={styles.priceList}>
+              {filteredPriceHistory.length === 0 ? (
+                <div className={styles.phEmptyState}>
+                  <i className="ti ti-search" aria-hidden="true" />
+                  <span>{priceSearch ? `No items matching "${priceSearch}"` : 'No items match this filter'}</span>
+                </div>
+              ) : filteredPriceHistory.map(item => (
+                <div key={item.key}>
+                  <PriceHistoryCard item={item} onSelect={selectProduct} />
+                </div>
+              ))}
+            </div>
           </>
         )}
 

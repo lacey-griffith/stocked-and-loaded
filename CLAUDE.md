@@ -11,6 +11,10 @@ After every commit/push, append a log entry to the ## Ship Log section of this f
 
 ## Ship Log
 
+### 2026-05-22 (17)
+Two layout fixes. Insights price movers grid: added `min-width: 0; overflow: hidden` to grid column children so item names truncate correctly instead of overflowing; breakpoint changed from 500px to 600px for single-column collapse. Price history: removed the A–Z alphabet filter bar entirely — deleted `phLetterRefs` ref, `availableLetters`/`firstOfLetter` logic, the IIFE wrapper, all alpha bar JSX, and the four alpha CSS classes. Search and filter pills are unchanged.
+- No known issues.
+
 ### 2026-05-22 (16)
 Added Recipes tab (ti-tools-kitchen). List view shows a card per recipe with total cost, cost-per-serving, servings count, and a "Good time to make" green chip or "X ingredients above avg" amber chip based on live price comparison. Detail view: inline-editable recipe name, stat row with servings +/- stepper (costs update live), ingredient search that draws from order history (ti-history icon) with catalog fallback for manually priced items. Ingredient table shows qty (editable), current unit price, subtotal, and At low / Normal / Above avg / Catalog status chips. Delete recipe with confirmation. All data persists to localStorage under stocked_loaded_recipes_v1.
 - No known issues.

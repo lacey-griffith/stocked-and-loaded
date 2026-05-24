@@ -937,8 +937,9 @@
   grid-template-columns: 1fr 1fr;
   gap: 24px;
 }
+.insightsPriceCols > div { min-width: 0; overflow: hidden; }
 
-@media (max-width: 500px) {
+@media (max-width: 600px) {
   .insightsPriceCols { grid-template-columns: 1fr; }
 }
 
@@ -1624,42 +1625,6 @@
   padding: 1px 6px;
   min-width: 20px;
   line-height: 1.4;
-}
-
-/* Price history A–Z index */
-.phAlphaBar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px;
-  margin-bottom: 14px;
-}
-.phAlphaBtn {
-  min-width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--bg-card);
-  color: var(--text-primary);
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: var(--font);
-  transition: background 0.1s, color 0.1s;
-}
-.phAlphaBtn:hover:not(:disabled) {
-  background: var(--color-heb-red);
-  color: #fff;
-  border-color: var(--color-heb-red);
-}
-.phAlphaBtnDisabled {
-  color: var(--text-muted);
-  background: var(--bg-app);
-  border-color: transparent;
-  cursor: default;
-  opacity: 0.4;
 }
 
 /* Items load more row */
