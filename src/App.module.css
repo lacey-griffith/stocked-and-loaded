@@ -1579,6 +1579,53 @@
 .compactMeta { font-size: 13px; color: var(--text-secondary); }
 .compactChevron { font-size: 14px; color: var(--text-muted); }
 
+/* Price history filter pills */
+.phFilterPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.phFilterPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.phFilterPill:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+.phFilterPillActive {
+  background: var(--accent-light);
+  color: var(--accent-text);
+  border-color: var(--accent);
+}
+.phFilterPillActive:hover { background: var(--accent-light); opacity: 0.9; }
+
+.phFilterBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-heb-red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--mono);
+  border-radius: 999px;
+  padding: 1px 6px;
+  min-width: 20px;
+  line-height: 1.4;
+}
+
 /* Price history A–Z index */
 .phAlphaBar {
   display: flex;

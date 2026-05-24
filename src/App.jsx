@@ -454,6 +454,7 @@ export default function App() {
   const [sortCol, setSortCol] = useState(null)
   const [sortDir, setSortDir] = useState('asc')
   const [priceSearch, setPriceSearch] = useState('')
+  const [priceFilter, setPriceFilter] = useState('all')
   const [importStatus, setImportStatus] = useState(null)
   const [showManual, setShowManual] = useState(false)
   const [manDate, setManDate] = useState('')
@@ -671,10 +672,33 @@ export default function App() {
       parseUnitPrice(e.unitPrice) !== parseUnitPrice(item.entries[i - 1].unitPrice)
     ).length
 
+  const priceRangePct = (entries) => {
+    const prices = entries.map(e => parseUnitPrice(e.unitPrice)).filter(p => p > 0)
+    if (prices.length < 2) return 0
+    const min = Math.min(...prices)
+    const max = Math.max(...prices)
+    return (max - min) / min * 100
+  }
+
+  const volatileCount = Object.values(priceHistory)
+    .filter(p => p.entries.length >= 3 && priceRangePct(p.entries) > 10).length
+
   const filteredPriceHistory = Object.entries(priceHistory)
     .filter(([, p]) => p.entries.length > 1)
     .filter(([, p]) => !priceSearch || p.name.toLowerCase().includes(priceSearch.toLowerCase()))
-    .sort(([, a], [, b]) => priceChangesCount(b) - priceChangesCount(a))
+    .filter(([, p]) => {
+      if (priceFilter === 'volatile') return p.entries.length >= 3 && priceRangePct(p.entries) > 10
+      if (priceFilter === 'recent') {
+        const last = p.entries[p.entries.length - 1]
+        const prev = p.entries[p.entries.length - 2]
+        return last && prev && parseUnitPrice(last.unitPrice) !== parseUnitPrice(prev.unitPrice)
+      }
+      return true
+    })
+    .sort(([, a], [, b]) => {
+      if (priceFilter === 'volatile') return (priceRangePct(b.entries) * b.entries.length) - (priceRangePct(a.entries) * a.entries.length)
+      return priceChangesCount(b) - priceChangesCount(a)
+    })
     .map(([k, p]) => ({ ...p, key: k }))
 
   const bucketedChartData = (() => {
@@ -1409,6 +1433,22 @@ export default function App() {
 
         {!selectedProduct && tab === 'price history' && (
           <>
+            <div className={styles.phFilterPills}>
+              {[
+                { id: 'all', label: 'All items' },
+                { id: 'volatile', label: 'Volatile repeat buys', count: volatileCount },
+                { id: 'recent', label: 'Price changed recently' },
+              ].map(({ id, label, count }) => (
+                <button
+                  key={id}
+                  className={`${styles.phFilterPill} ${priceFilter === id ? styles.phFilterPillActive : ''}`}
+                  onClick={() => setPriceFilter(id)}
+                >
+                  {label}
+                  {count != null && <span className={styles.phFilterBadge}>{count}</span>}
+                </button>
+              ))}
+            </div>
             <div className={styles.filterRow}>
               <div style={{ position: 'relative', flex: 1 }}>
                 <i className="ti ti-search" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: 16 }} aria-hidden="true" />
@@ -1444,10 +1484,10 @@ export default function App() {
                     ))}
                   </div>
                   <div className={styles.priceList}>
-                    {filteredPriceHistory.length === 0 && priceSearch ? (
+                    {filteredPriceHistory.length === 0 ? (
                       <div className={styles.phEmptyState}>
                         <i className="ti ti-search" aria-hidden="true" />
-                        <span>No items matching &ldquo;{priceSearch}&rdquo;</span>
+                        <span>{priceSearch ? `No items matching "${priceSearch}"` : 'No items match this filter'}</span>
                       </div>
                     ) : filteredPriceHistory.map(item => {
                       const letter = item.name[0]?.toUpperCase()

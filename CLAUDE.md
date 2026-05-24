@@ -11,6 +11,10 @@ After every commit/push, append a log entry to the ## Ship Log section of this f
 
 ## Ship Log
 
+### 2026-05-22 (15)
+Added "Volatile repeat buys" filter shortcut to Price History tab. Three pill buttons above the search input — All items (default), Volatile repeat buys (3+ entries AND >10% price range, sorted by volatility% × entry count descending), and Price changed recently (last entry differs from previous). The volatile pill shows a live count badge in red. Both filters combine with the existing search. Empty state updated to handle filter-with-no-results.
+- No known issues.
+
 ### 2026-05-22 (14)
 Applied 6 medium/low audit fixes. Header subtitle now derives the earliest order date dynamically instead of hardcoding "Dec 2025". Manual order panel gets a Cancel button. Price history tab shows a centered empty state with search icon when no items match the query. `phStatDate` and `watchLabel` bumped from 10px to 12px. Cart mobile layout switches to flex-wrap so the name takes full width and action buttons stay in a row. `loadTimeRangePrefs` lazy-initialized in useState to avoid localStorage reads on every render.
 - No known issues.
