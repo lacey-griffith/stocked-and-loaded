@@ -463,11 +463,10 @@ export default function App() {
   const spendChartInst = useRef(null)
   const catChartInst = useRef(null)
 
-  const initPrefs = loadTimeRangePrefs()
-  const [timeRange, setTimeRange] = useState(initPrefs.range)
-  const [timeRangeMonth, setTimeRangeMonth] = useState(initPrefs.month)
-  const [customFrom, setCustomFrom] = useState(initPrefs.from)
-  const [customTo, setCustomTo] = useState(initPrefs.to)
+  const [timeRange, setTimeRange] = useState(() => loadTimeRangePrefs().range)
+  const [timeRangeMonth, setTimeRangeMonth] = useState(() => loadTimeRangePrefs().month)
+  const [customFrom, setCustomFrom] = useState(() => loadTimeRangePrefs().from)
+  const [customTo, setCustomTo] = useState(() => loadTimeRangePrefs().to)
   const [drilldownOrder, setDrilldownOrder] = useState(null)
   const [drilldownCat, setDrilldownCat] = useState(null)
   const [selectedProduct, setSelectedProduct] = useState(null)
@@ -877,12 +876,17 @@ export default function App() {
 
   const shortName = name => name?.replace(/, \d+(\.\d+)?\s*(oz|lb|lbs|ct|L|ml|g|pk).*/i, '').replace(/^H-E-B /i, '').replace(/^Hill Country Fare /i, '')
 
+  const earliestOrderLabel = orders.length
+    ? parseDate(orders.reduce((min, o) => parseDate(o.date) < parseDate(min.date) ? o : min).date)
+        .toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+    : null
+
   return (
     <div className={styles.app}>
       <header className={styles.header}>
         <div className={styles.headerLeft}>
           <h1 className={styles.title}>stocked & loaded</h1>
-          <p className={styles.subtitle}>{orders.length} orders · Dec 2025 – present</p>
+          <p className={styles.subtitle}>{orders.length} orders{earliestOrderLabel ? ` · ${earliestOrderLabel} – present` : ''}</p>
         </div>
         <div className={styles.headerActions}>
           {importStatus && (
@@ -938,6 +942,7 @@ export default function App() {
             <button onClick={() => setManItems(prev => [...prev, { name: '', price: '', quantity: '1 each' }])}>
               <i className="ti ti-plus" aria-hidden="true" /> Add item
             </button>
+            <button onClick={() => setShowManual(false)}>Cancel</button>
             <button className="primary" onClick={saveManualOrder}>Save order</button>
           </div>
         </div>
@@ -1439,7 +1444,12 @@ export default function App() {
                     ))}
                   </div>
                   <div className={styles.priceList}>
-                    {filteredPriceHistory.map(item => {
+                    {filteredPriceHistory.length === 0 && priceSearch ? (
+                      <div className={styles.phEmptyState}>
+                        <i className="ti ti-search" aria-hidden="true" />
+                        <span>No items matching &ldquo;{priceSearch}&rdquo;</span>
+                      </div>
+                    ) : filteredPriceHistory.map(item => {
                       const letter = item.name[0]?.toUpperCase()
                       const isAnchor = letter && firstOfLetter[letter] === item.key
                       return (

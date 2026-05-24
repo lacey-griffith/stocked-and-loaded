@@ -11,6 +11,10 @@ After every commit/push, append a log entry to the ## Ship Log section of this f
 
 ## Ship Log
 
+### 2026-05-22 (14)
+Applied 6 medium/low audit fixes. Header subtitle now derives the earliest order date dynamically instead of hardcoding "Dec 2025". Manual order panel gets a Cancel button. Price history tab shows a centered empty state with search icon when no items match the query. `phStatDate` and `watchLabel` bumped from 10px to 12px. Cart mobile layout switches to flex-wrap so the name takes full width and action buttons stay in a row. `loadTimeRangePrefs` lazy-initialized in useState to avoid localStorage reads on every render.
+- No known issues.
+
 ### 2026-05-22 (13)
 Final audit fixes from Jenny, Karen, and Maya. Critical fix: screenshot API call now sends `x-api-key` and `anthropic-version` headers (was silently 401ing on every import). High fixes: `--bg-app` CSS variable defined (was undefined, breaking 6 hover/active states); `compactRow` border selector fixed to use wrapper class so only the first row loses its top border; product detail "Store" header cell now hidden on mobile alongside data cells; `pdNameLink` hover color changed from teal to HEB red; cart qty stepper, watch, and remove buttons bumped to 36px (was 26–30px); price history A–Z buttons bumped to 32px.
 - No known issues.
