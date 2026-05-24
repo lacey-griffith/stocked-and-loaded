@@ -11,6 +11,10 @@ After every commit/push, append a log entry to the ## Ship Log section of this f
 
 ## Ship Log
 
+### 2026-05-22 (18)
+Two small Recipes tab additions. Save recipe button added to the stat row (right-aligned via margin-left:auto) — clicking it flashes "Saved ✓" in green for 2 seconds then reverts, confirming the auto-save persisted. Ingredient qty helper text ("Set qty to the amount used in this recipe, not the full package size…") shown below the table whenever ingredients are present, styled as 12px muted text.
+- No known issues.
+
 ### 2026-05-22 (17)
 Two layout fixes. Insights price movers grid: added `min-width: 0; overflow: hidden` to grid column children so item names truncate correctly instead of overflowing; breakpoint changed from 500px to 600px for single-column collapse. Price history: removed the A–Z alphabet filter bar entirely — deleted `phLetterRefs` ref, `availableLetters`/`firstOfLetter` logic, the IIFE wrapper, all alpha bar JSX, and the four alpha CSS classes. Search and filter pills are unchanged.
 - No known issues.

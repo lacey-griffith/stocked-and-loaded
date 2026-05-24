@@ -485,6 +485,7 @@ export default function App() {
   const [catalogPending, setCatalogPending] = useState(null)
   const [catalogPriceInput, setCatalogPriceInput] = useState('')
   const [editingRecipeName, setEditingRecipeName] = useState(false)
+  const [recipeSaved, setRecipeSaved] = useState(false)
   const [cartSearch, setCartSearch] = useState('')
   const [chartBucket, setChartBucket] = useState('order')
   const [ordersView, setOrdersView] = useState('card')
@@ -1824,6 +1825,12 @@ export default function App() {
                       <span className={styles.recipeStatValue}>${costPerServing.toFixed(2)}</span>
                     </div>
                     {chip && <span className={chip.type === 'good' ? styles.recipeGoodChip : styles.recipeWarnChip}>{chip.label}</span>}
+                    <button
+                      className={`${styles.recipeSaveBtn} ${recipeSaved ? styles.recipeSaveBtnDone : ''}`}
+                      onClick={() => { setRecipeSaved(true); setTimeout(() => setRecipeSaved(false), 2000) }}
+                    >
+                      {recipeSaved ? 'Saved ✓' : 'Save recipe'}
+                    </button>
                   </div>
                 </div>
                 <div className={styles.recipeIngSearchWrap}>
@@ -1909,6 +1916,9 @@ export default function App() {
                     <i className="ti ti-tools-kitchen" aria-hidden="true" />
                     <span>Search for ingredients above to build this recipe</span>
                   </div>
+                )}
+                {recipe.ingredients.length > 0 && (
+                  <p className={styles.recipeIngHint}>Set qty to the amount used in this recipe, not the full package size. Example: 0.5 for half a package.</p>
                 )}
                 <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end' }}>
                   <button className={styles.recipeDeleteBtn} onClick={() => { if (window.confirm(`Delete "${recipe.name}"?`)) deleteRecipe(recipe.id) }}>
