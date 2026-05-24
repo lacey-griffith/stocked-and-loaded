@@ -11,6 +11,10 @@ After every commit/push, append a log entry to the ## Ship Log section of this f
 
 ## Ship Log
 
+### 2026-05-24 (20)
+Applied 12 High/Medium fixes from joint Jenny+Karen+Maya audit of Sprint 7 (Recipes, Items search, Insights). Key fixes: recipe ingredient search icon gets `pointerEvents: 'none'` and `width: '100%'` (same click-intercept bug just fixed in Items tab); `setCatalogPriceInput('')` added to `[tab]` effect so stale price doesn't re-appear when re-opening catalog form; ingredient table hides Subtotal+Status columns below 600px to prevent overflow; `recipeIngResults` z-index bumped 10→20; `recipeIngRemove` button 28→32px; `recipeDeleteBtn` border uses `var(--danger-light)` at rest; `recipeSaveBtnDone` border uses `var(--success)` instead of `var(--accent)`; `recipeIngHint` margin-top 8→12px; `insightsPriceName` gets `min-width: 0` for reliable button truncation; delta chip colors switched from hardcoded hex to design tokens (`var(--color-heb-red)`, `var(--success)`).
+- No known issues.
+
 ### 2026-05-22 (19)
 Fixed Items tab search input. Added `pointerEvents: 'none'` to the ti-search icon (was intercepting clicks and making the icon feel like a standalone button) and `width: '100%'` to the input. State and filter logic were already correct.
 - No known issues.

@@ -514,6 +514,7 @@ export default function App() {
     setSelectedRecipe(null)
     setRecipeIngSearch('')
     setCatalogPending(null)
+    setCatalogPriceInput('')
     setEditingRecipeName(false)
   }, [tab])
 
@@ -1835,12 +1836,12 @@ export default function App() {
                 </div>
                 <div className={styles.recipeIngSearchWrap}>
                   <div style={{ position: 'relative' }}>
-                    <i className="ti ti-search" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: 16 }} aria-hidden="true" />
+                    <i className="ti ti-search" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: 16, pointerEvents: 'none' }} aria-hidden="true" />
                     <input
                       placeholder="Add ingredient from order history…"
                       value={recipeIngSearch}
                       onChange={e => { setRecipeIngSearch(e.target.value); setCatalogPending(null); setCatalogPriceInput('') }}
-                      style={{ paddingLeft: 34 }}
+                      style={{ paddingLeft: 34, width: '100%' }}
                       autoComplete="off"
                     />
                   </div>

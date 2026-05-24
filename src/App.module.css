@@ -969,12 +969,13 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
+  min-width: 0;
 }
 
 .insightsPriceDeltaUp {
   font-size: 12px;
   font-family: var(--mono);
-  color: #C12033;
+  color: var(--color-heb-red);
   font-weight: 500;
   flex-shrink: 0;
 }
@@ -982,7 +983,7 @@
 .insightsPriceDeltaDown {
   font-size: 12px;
   font-family: var(--mono);
-  color: #065f46;
+  color: var(--success);
   font-weight: 500;
   flex-shrink: 0;
 }
@@ -1872,7 +1873,7 @@
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
-  z-index: 10;
+  z-index: 20;
   overflow: hidden;
 }
 
@@ -1948,6 +1949,17 @@
   align-items: center;
 }
 .recipeIngRow:last-of-type { border-bottom: none; }
+
+@media (max-width: 600px) {
+  .recipeIngHead,
+  .recipeIngRow {
+    grid-template-columns: 2fr 60px 100px 36px;
+  }
+  .recipeIngHead > span:nth-child(4),
+  .recipeIngHead > span:nth-child(5),
+  .recipeIngRow > span:nth-child(4),
+  .recipeIngRow > span:nth-child(5) { display: none; }
+}
 
 .recipeIngName {
   overflow: hidden;
@@ -2037,8 +2049,8 @@
   border: none;
   cursor: pointer;
   color: var(--text-muted);
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2050,7 +2062,7 @@
 
 .recipeDeleteBtn {
   background: none;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--danger-light);
   border-radius: var(--radius-sm);
   color: var(--danger);
   padding: 7px 14px;
@@ -2082,7 +2094,7 @@
 .recipeSaveBtnDone {
   background: var(--success-light);
   color: var(--success);
-  border-color: var(--accent);
+  border-color: var(--success);
   cursor: default;
 }
 .recipeSaveBtnDone:hover { background: var(--success-light); color: var(--success); }
@@ -2090,6 +2102,6 @@
 .recipeIngHint {
   font-size: 12px;
   color: var(--text-muted);
-  margin-top: 8px;
+  margin-top: 12px;
   line-height: 1.5;
 }
