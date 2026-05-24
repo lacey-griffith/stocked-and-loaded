@@ -1473,12 +1473,12 @@ export default function App() {
             />
             <div className={styles.filterRow}>
               <div style={{ position: 'relative', flex: 1 }}>
-                <i className="ti ti-search" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: 16 }} aria-hidden="true" />
+                <i className="ti ti-search" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: 16, pointerEvents: 'none' }} aria-hidden="true" />
                 <input
                   placeholder="Search items…"
                   value={itemSearch}
                   onChange={e => setItemSearch(e.target.value)}
-                  style={{ paddingLeft: 34 }}
+                  style={{ paddingLeft: 34, width: '100%' }}
                 />
               </div>
               <select value={filterCat} onChange={e => setFilterCat(e.target.value)} style={{ minWidth: 160 }}>

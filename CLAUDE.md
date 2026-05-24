@@ -11,6 +11,10 @@ After every commit/push, append a log entry to the ## Ship Log section of this f
 
 ## Ship Log
 
+### 2026-05-22 (19)
+Fixed Items tab search input. Added `pointerEvents: 'none'` to the ti-search icon (was intercepting clicks and making the icon feel like a standalone button) and `width: '100%'` to the input. State and filter logic were already correct.
+- No known issues.
+
 ### 2026-05-22 (18)
 Two small Recipes tab additions. Save recipe button added to the stat row (right-aligned via margin-left:auto) — clicking it flashes "Saved ✓" in green for 2 seconds then reverts, confirming the auto-save persisted. Ingredient qty helper text ("Set qty to the amount used in this recipe, not the full package size…") shown below the table whenever ingredients are present, styled as 12px muted text.
 - No known issues.
