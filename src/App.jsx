@@ -80,6 +80,64 @@ function parseUnitPrice(str) {
   return m ? parseFloat(m[1]) : 0
 }
 
+function getISOWeek(d) {
+  const date = new Date(d)
+  date.setHours(0, 0, 0, 0)
+  date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7)
+  const week1 = new Date(date.getFullYear(), 0, 4)
+  return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7)
+}
+
+function calcVolatilityScore(entries) {
+  if (!entries || entries.length < 3) return null
+  const prices = entries.map(e => parseUnitPrice(e.unitPrice)).filter(p => p > 0)
+  if (prices.length < 3) return null
+  const min = Math.min(...prices)
+  const max = Math.max(...prices)
+  const rangePct = min > 0 ? ((max - min) / min) * 100 : 0
+  const changes = prices.filter((p, i) => i > 0 && p !== prices[i - 1]).length
+  const maxChanges = prices.length - 1
+  const normalizedChanges = maxChanges > 0 ? (changes / maxChanges) * 100 : 0
+  return Math.min(100, Math.round(rangePct * 0.6 + normalizedChanges * 0.4))
+}
+
+function volTier(score) {
+  if (score === null) return null
+  if (score <= 30) return 'low'
+  if (score <= 65) return 'medium'
+  return 'high'
+}
+
+const VOL_COLORS = {
+  low:    { bg: '#EAF3DE', text: '#3B6D11', border: '#97C459' },
+  medium: { bg: '#FAEEDA', text: '#854F0B', border: '#EF9F27' },
+  high:   { bg: '#FCEBEB', text: '#A32D2D', border: '#F09595' },
+}
+
+const YEAR_COLORS = { 2023: '#888780', 2024: '#378ADD', 2025: '#1D9E75', 2026: '#E1251B' }
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+
+function VolScore({ entries, style = {} }) {
+  const score = calcVolatilityScore(entries)
+  if (score === null) return null
+  const tier = volTier(score)
+  const { bg, text, border } = VOL_COLORS[tier]
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      fontSize: 11, fontWeight: 500, padding: '2px 7px',
+      borderRadius: 4, border: `0.5px solid ${border}`,
+      background: bg, color: text, fontFamily: 'var(--mono)',
+      ...style
+    }}>
+      {score}
+      <span style={{ fontSize: 10, opacity: 0.8, fontFamily: 'var(--font-sans)' }}>
+        {tier}
+      </span>
+    </span>
+  )
+}
+
 function getDateBounds(timeRange, customFrom, customTo, timeRangeMonth) {
   if (timeRange === 'all') return null
   const now = new Date()
@@ -325,7 +383,9 @@ function PriceHistoryCard({ item, onSelect }) {
     <div className={styles.card}>
       <div className={styles.phCardTop}>
         <button className={styles.pdNameLink} onClick={() => onSelect && onSelect(item.key || item.name)}>{item.name}</button>
-        <div className={styles.phViewToggle}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <VolScore entries={entries} />
+          <div className={styles.phViewToggle}>
           <button
             className={`${styles.phToggleBtn} ${view === 'graph' ? styles.phToggleBtnActive : ''}`}
             onClick={() => setView('graph')}
@@ -334,6 +394,7 @@ function PriceHistoryCard({ item, onSelect }) {
             className={`${styles.phToggleBtn} ${view === 'chips' ? styles.phToggleBtnActive : ''}`}
             onClick={() => setView('chips')}
           >Chips</button>
+        </div>
         </div>
       </div>
       {view === 'graph' && (
@@ -371,6 +432,125 @@ function PriceHistoryCard({ item, onSelect }) {
         </>
       )}
       {view === 'chips' && <PriceChips entries={entries} />}
+    </div>
+  )
+}
+
+function YoYChart({ orders, allItems }) {
+  const [bucket, setBucket] = useState('month')
+  const [cat, setCat] = useState('All')
+  const yoyChartRef = useRef(null)
+  const yoyChartInst = useRef(null)
+
+  const cats = useMemo(() => {
+    const catSet = new Set(allItems.map(i => i.cat))
+    return ['All', ...[...catSet].sort()]
+  }, [allItems])
+
+  useEffect(() => {
+    if (!yoyChartRef.current) return
+    yoyChartInst.current?.destroy()
+
+    const allYears = [...new Set(orders.map(o => parseDate(o.date).getFullYear()))].sort()
+    const useItems = cat !== 'All'
+    const srcItems = useItems ? allItems.filter(i => i.cat === cat) : null
+
+    let labels = []
+    let datasets = []
+
+    if (bucket === 'year') {
+      const totals = {}
+      if (!useItems) {
+        orders.forEach(o => { const y = parseDate(o.date).getFullYear(); totals[y] = (totals[y] || 0) + (o.totalAmount || 0) })
+      } else {
+        srcItems.forEach(i => { const y = parseDate(i.orderDate).getFullYear(); totals[y] = (totals[y] || 0) + (i.price || 0) })
+      }
+      const sortedYears = Object.keys(totals).map(Number).sort()
+      labels = sortedYears.map(String)
+      datasets = [{ data: sortedYears.map(y => Math.round(totals[y] * 100) / 100), backgroundColor: sortedYears.map(y => YEAR_COLORS[y] || '#888'), borderRadius: 3, borderSkipped: false }]
+    } else if (bucket === 'month') {
+      const totals = {}
+      const addEntry = (y, m, val) => { if (!totals[y]) totals[y] = {}; totals[y][m] = (totals[y][m] || 0) + val }
+      if (!useItems) {
+        orders.forEach(o => { const d = parseDate(o.date); addEntry(d.getFullYear(), d.getMonth() + 1, o.totalAmount || 0) })
+      } else {
+        srcItems.forEach(i => { const d = parseDate(i.orderDate); addEntry(d.getFullYear(), d.getMonth() + 1, i.price || 0) })
+      }
+      const allMonths = [...new Set(Object.values(totals).flatMap(m => Object.keys(m).map(Number)))].sort((a, b) => a - b)
+      labels = allMonths.map(m => MONTH_NAMES[m - 1])
+      datasets = allYears.filter(y => totals[y]).map(year => ({
+        label: String(year),
+        data: allMonths.map(m => Math.round((totals[year]?.[m] || 0) * 100) / 100),
+        backgroundColor: YEAR_COLORS[year] || '#888',
+        borderRadius: 3,
+        borderSkipped: false,
+      }))
+    } else {
+      const totals = {}
+      const addEntry = (y, w, val) => { if (!totals[y]) totals[y] = {}; totals[y][w] = (totals[y][w] || 0) + val }
+      if (!useItems) {
+        orders.forEach(o => { const d = parseDate(o.date); addEntry(d.getFullYear(), getISOWeek(d), o.totalAmount || 0) })
+      } else {
+        srcItems.forEach(i => { const d = parseDate(i.orderDate); addEntry(d.getFullYear(), getISOWeek(d), i.price || 0) })
+      }
+      const allWeeks = [...new Set(Object.values(totals).flatMap(w => Object.keys(w).map(Number)))].sort((a, b) => a - b)
+      labels = allWeeks.map(w => `W${w}`)
+      datasets = allYears.filter(y => totals[y]).map(year => ({
+        label: String(year),
+        data: allWeeks.map(w => Math.round((totals[year]?.[w] || 0) * 100) / 100),
+        backgroundColor: YEAR_COLORS[year] || '#888',
+        borderRadius: 3,
+        borderSkipped: false,
+      }))
+    }
+
+    yoyChartInst.current = new Chart(yoyChartRef.current, {
+      type: 'bar',
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { maxRotation: 45, font: { size: 11, family: 'DM Sans' }, autoSkip: true, maxTicksLimit: 16 }, grid: { display: false } },
+          y: { ticks: { callback: v => '$' + Math.round(v), font: { size: 11, family: 'DM Sans' } }, grid: { color: 'rgba(128,128,128,0.08)' }, border: { dash: [4, 4] } },
+        },
+      },
+    })
+    return () => { yoyChartInst.current?.destroy() }
+  }, [orders, allItems, bucket, cat])
+
+  return (
+    <div className={styles.card}>
+      <div className={styles.chartCardHeader}>
+        <p className={styles.cardLabel}>Spend year over year</p>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div className={styles.chartBucketToggle}>
+            {[['week','Week'],['month','Month'],['year','Year']].map(([val, label]) => (
+              <button key={val} className={`${styles.chartBucketBtn} ${bucket === val ? styles.chartBucketBtnActive : ''}`} onClick={() => setBucket(val)}>{label}</button>
+            ))}
+          </div>
+          <select
+            value={cat}
+            onChange={e => setCat(e.target.value)}
+            style={{ fontSize: 12, padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'white', color: 'var(--text)', fontFamily: 'var(--font)' }}
+          >
+            {cats.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+      </div>
+      <div style={{ position: 'relative', height: 240 }}>
+        <canvas ref={yoyChartRef} />
+      </div>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
+        {Object.entries(YEAR_COLORS).map(([year, color]) => (
+          <span key={year} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text-muted)' }}>
+            <span style={{ width: 10, height: 10, borderRadius: 2, background: color, display: 'inline-block', flexShrink: 0 }} />
+            {year}
+          </span>
+        ))}
+      </div>
     </div>
   )
 }
@@ -1575,6 +1755,8 @@ export default function App() {
           const prevLabel = prevDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
           return (
             <>
+              <YoYChart orders={orders} allItems={allItems} />
+
               <div className={styles.card}>
                 <p className={styles.cardLabel}>Month over month</p>
                 <div className={styles.insightsMonthRow}>

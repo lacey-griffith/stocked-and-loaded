@@ -1,119 +1,44 @@
-# stocked & loaded — Project Notes
+# stocked & loaded — project context
 
-## Ship Log Rule
+## Stack
+Vite + React, single-file app (src/App.jsx), deployed via GitHub Actions to GitHub Pages.
 
-After every commit/push, append a log entry to the ## Ship Log section of this file. Each entry must include:
-- Date
-- What changed (2-3 sentences max, plain english)
-- Any known issues or follow-ups
+## Live site
+lacey-griffith.github.io/stocked-and-loaded
 
----
+## Data
+79 real HEB orders, May 2023–May 2026, 2,002 items in src/seedData.js. Stored in localStorage key `stocked_and_loaded_v1`. Falls back to SEED_DATA on first load.
 
-## Ship Log
+## Sprint status
 
-### 2026-05-24 (20)
-Applied 12 High/Medium fixes from joint Jenny+Karen+Maya audit of Sprint 7 (Recipes, Items search, Insights). Key fixes: recipe ingredient search icon gets `pointerEvents: 'none'` and `width: '100%'` (same click-intercept bug just fixed in Items tab); `setCatalogPriceInput('')` added to `[tab]` effect so stale price doesn't re-appear when re-opening catalog form; ingredient table hides Subtotal+Status columns below 600px to prevent overflow; `recipeIngResults` z-index bumped 10→20; `recipeIngRemove` button 28→32px; `recipeDeleteBtn` border uses `var(--danger-light)` at rest; `recipeSaveBtnDone` border uses `var(--success)` instead of `var(--accent)`; `recipeIngHint` margin-top 8→12px; `insightsPriceName` gets `min-width: 0` for reliable button truncation; delta chip colors switched from hardcoded hex to design tokens (`var(--color-heb-red)`, `var(--success)`).
-- No known issues.
+| Sprint | Status | What shipped |
+|--------|--------|-------------|
+| 1 | ✅ Done | Category overrides, column sorting, time range filters |
+| 2 | ✅ Done | Product detail page, full price graph |
+| 3 | ✅ Done | Overview drilldowns, price history redesign |
+| 4 | ✅ Done | Cart estimator, price alerts |
+| 5 | ✅ Done | Insights layer (MoM spend, price movers, category trends) |
+| 6 | ✅ Done | Volatile repeat buys filter, volatility scores (0–100, low/med/high), YoY seasonal spend chart |
+| 7 | ✅ Done | Recipes tab (ingredient picker, price status, per serving cost) |
+| 8 | 🔲 Next | Products tab (merge Items + Price History), sparklines grid, scatter chart, side panel detail |
 
-### 2026-05-22 (19)
-Fixed Items tab search input. Added `pointerEvents: 'none'` to the ti-search icon (was intercepting clicks and making the icon feel like a standalone button) and `width: '100%'` to the input. State and filter logic were already correct.
-- No known issues.
+## Up next
+- Sprint 8: Merge Items + Price History into unified Products tab with three views (Table, Sparklines, Scatter) and a slide-in detail panel
+- Receipt import: AI-powered OCR via Anthropic API (needs VITE_ANTHROPIC_API_KEY setup for local + GitHub Pages)
 
-### 2026-05-22 (18)
-Two small Recipes tab additions. Save recipe button added to the stat row (right-aligned via margin-left:auto) — clicking it flashes "Saved ✓" in green for 2 seconds then reverts, confirming the auto-save persisted. Ingredient qty helper text ("Set qty to the amount used in this recipe, not the full package size…") shown below the table whenever ingredients are present, styled as 12px muted text.
-- No known issues.
+## Key constants / localStorage keys
+- `stocked_and_loaded_v1` — orders array
+- `stocked_loaded_cat_overrides` — category override map
+- `stocked_loaded_time_range` — persisted time filter
+- `stocked_loaded_cart_v1` — cart items
+- `stocked_loaded_watchlist_v1` — price watch targets
+- `stocked_loaded_recipes_v1` — saved recipes
 
-### 2026-05-22 (17)
-Two layout fixes. Insights price movers grid: added `min-width: 0; overflow: hidden` to grid column children so item names truncate correctly instead of overflowing; breakpoint changed from 500px to 600px for single-column collapse. Price history: removed the A–Z alphabet filter bar entirely — deleted `phLetterRefs` ref, `availableLetters`/`firstOfLetter` logic, the IIFE wrapper, all alpha bar JSX, and the four alpha CSS classes. Search and filter pills are unchanged.
-- No known issues.
+## Agents
+- `.claude/agents/Jenny.md` — spec compliance
+- `.claude/agents/Karen.md` — reality check  
+- `.claude/agents/Maya.md` — UI/UX design review
+- `.claude/agents/Rex.md` — data analyst
 
-### 2026-05-22 (16)
-Added Recipes tab (ti-tools-kitchen). List view shows a card per recipe with total cost, cost-per-serving, servings count, and a "Good time to make" green chip or "X ingredients above avg" amber chip based on live price comparison. Detail view: inline-editable recipe name, stat row with servings +/- stepper (costs update live), ingredient search that draws from order history (ti-history icon) with catalog fallback for manually priced items. Ingredient table shows qty (editable), current unit price, subtotal, and At low / Normal / Above avg / Catalog status chips. Delete recipe with confirmation. All data persists to localStorage under stocked_loaded_recipes_v1.
-- No known issues.
-
-### 2026-05-22 (15)
-Added "Volatile repeat buys" filter shortcut to Price History tab. Three pill buttons above the search input — All items (default), Volatile repeat buys (3+ entries AND >10% price range, sorted by volatility% × entry count descending), and Price changed recently (last entry differs from previous). The volatile pill shows a live count badge in red. Both filters combine with the existing search. Empty state updated to handle filter-with-no-results.
-- No known issues.
-
-### 2026-05-22 (14)
-Applied 6 medium/low audit fixes. Header subtitle now derives the earliest order date dynamically instead of hardcoding "Dec 2025". Manual order panel gets a Cancel button. Price history tab shows a centered empty state with search icon when no items match the query. `phStatDate` and `watchLabel` bumped from 10px to 12px. Cart mobile layout switches to flex-wrap so the name takes full width and action buttons stay in a row. `loadTimeRangePrefs` lazy-initialized in useState to avoid localStorage reads on every render.
-- No known issues.
-
-### 2026-05-22 (13)
-Final audit fixes from Jenny, Karen, and Maya. Critical fix: screenshot API call now sends `x-api-key` and `anthropic-version` headers (was silently 401ing on every import). High fixes: `--bg-app` CSS variable defined (was undefined, breaking 6 hover/active states); `compactRow` border selector fixed to use wrapper class so only the first row loses its top border; product detail "Store" header cell now hidden on mobile alongside data cells; `pdNameLink` hover color changed from teal to HEB red; cart qty stepper, watch, and remove buttons bumped to 36px (was 26–30px); price history A–Z buttons bumped to 32px.
-- No known issues.
-
-### 2026-05-22 (12)
-Applied 18 Maya UI/UX design review fixes across App.jsx, App.module.css, and index.css. Key changes: `button:focus-visible` red outline added globally; cart rows stack to single column on mobile ≤500px; product detail store column hides and grid reflows to 4 columns on mobile ≤480px; image/store placeholders moved to below the purchase history table; cart qty stepper buttons get aria-labels; Price Watch card hidden when watchlist is empty; category trend legend dots removed; chart label is now dynamic ("Spend per order/week/month"); MoM Change box gets a colored left border when non-zero.
-- No known issues.
-
-### 2026-05-22 (11)
-Completed product detail view. Re-added `prevTab` state — `selectProduct()` now captures the current tab, and Back calls `setTab(prevTab)` so it reliably returns to the originating tab. Low/High hero stats now show the date of that price. Added a gray rounded image placeholder card (ti-photo, "Image coming soon") between the graph and the purchase history table. Replaced the plain multi-store text with a dashed-border card (ti-building-store icon, "Price comparison across stores coming soon").
-- No known issues.
-
-### 2026-05-22 (10)
-Fixed date parsing, chart readability, orders compact view, price history A–Z index, and items load more. `parseDate()` now uses a regex to extract just `Month Day, Year` from HEB timestamps like "Dec 15, 2023, 11:00am–12:00pm", fixing MoM bucketing inflation. Overview bar chart has Per order / Weekly / Monthly toggle with autoSkip + maxTicksLimit:12. Orders tab adds a compact list view (one row per order, expandable). Price history gets an A–Z pill bar that scrolls to the first matching item. Items tab cap raised to 250 with a Load more button (+250/click).
-- No known issues.
-
-### 2026-05-22 (9)
-Applied 4 Jenny/Karen audit fixes to Sprint 5 product detail. `pdBack` used undefined `var(--sans)` — fixed to `var(--font)`. Blank-page trap patched: when `selectedProduct` key is missing from `priceHistory`, a back button + "Item not found" message renders instead of an invisible dead end. `prevTab` state was dead (tab never changes during product navigation) — removed. Insights price mover names now clickable via `selectProduct(c.key)`, making them the 7th entry point to product detail.
-- No known issues.
-
-### 2026-05-22 (8)
-Added product detail view (Sprint 5). `ProductLineGraph` (200px, all dots, accented last point with white border, x/y axes). Clicking any item name in the items table, order drilldowns (overview and orders tab), category drilldown, cart, or price history card opens a full detail view with hero stats (current price, total delta chip, low/high), Chart.js line graph, purchase history table (date/store/qty/price/change), and a multi-store placeholder. Back button or tab switch clears the view.
-- No known issues.
-
-### 2026-05-22 (7)
-Applied 5 Sprint 4 audit fixes. `cartRow` border switched to `border-top/:first-child` to eliminate the double border between the last cart item and the total strip. `updateCartQty` now clamps at 1 (`Math.max`) so the − button never silently deletes — the explicit × is the only delete path. `cartSearch` cleared in the `[tab]` effect so the search dropdown doesn't reappear when returning to the cart tab. `useMemo` dep array for `computeInsights` expanded to `[orders, catOverrides]`. Watchlist target input gets `placeholder="0.00"`.
-- No known issues.
-
-### 2026-05-22 (6)
-Added cart estimator and price alerts (Sprint 4). Cart tab (`ti-shopping-cart-plus`) lets you search price history items, add them with a qty stepper, and see a running estimated total. Each row shows last-bought date and price-change count. A bell button pre-fills a watch target with the current price and adds the item to a "Price watch" section below the cart, which shows editable target price, current price, and a green/red/gray status chip. If any watched items are at or below target, a green callout appears in the overview insights card. Both cart and watchlist persist to localStorage.
-- No known issues.
-
-### 2026-05-22 (5)
-Applied 10 Jenny/Karen audit fixes to the Insights feature. Key fixes: price movers now compare the last two purchases (not first-to-last) so intermediate price swings register correctly; `momDelta === 0` renders "No change" in gray instead of falling through to green; `categoryTrend` wired into the category trends card as a "Biggest shift" callout; overview insights card labeled "· current month" to distinguish it from filtered metrics; `computeInsights` wrapped in `useMemo([orders])`; explicit +/- signs on all delta values; CSS border fix and category name overflow truncation.
-- No known issues.
-
-### 2026-05-22 (4)
-Added Insights tab and overview summary card. `computeInsights(orders, allItems)` computes month-over-month spend delta, all price movers (jumps and drops sorted by magnitude), and per-category MoM growth. A red-left-border summary card above Top Repeat Buys in the overview tab shows this-month total, MoM delta, and price change count with the biggest mover callouts and a "View insights →" link. The full Insights tab has three cards: month comparison boxes, a two-column price movers grid (increases / decreases, top 6 each), and a category trend bar list.
-- No known issues.
-
-### 2026-05-21
-Vite + React app deployed to GitHub Pages via GitHub Actions. Price history tab overhauled: sparklines (Chart.js, teal line, no axes), numeric delta chips (red for increases, green for decreases), search filter by item name, sorted by most price changes descending. Fixed entry sort order (was newest-first, now oldest-first) and replaced string unit price comparison with numeric via `parseUnitPrice`. Agents Jenny (spec auditor) and Karen (reality checker) added to `.claude/agents/`.
-
-### 2026-05-21
-Applied HEB brand color palette to `index.css`. Added 11 brand variables (`--color-teal`, `--color-heb-red`, cold-brew scale, etc). Replaced old green accent (#2d6a4f) with `--color-teal` (#2B8562) for charts, tabs, and focus rings; primary buttons now use `--color-heb-red` (#E1251B) via a new `--primary` token. Backgrounds mapped to cold-brew-50 and buttercream; danger updated to brisket-red.
-- No known issues. Dark mode accent updated to a lighter teal (#4db88a).
-
-### 2026-05-21
-Full rebrand to HEB bright/clean aesthetic. Page background is cold-brew-50 (#F5F5F5), all cards are white with light #E5E5E5 borders and a subtle shadow. Header is HEB red with white text; active tabs are red; bar chart bars are red. Removed the dark-mode media query entirely — app is always light. Secondary buttons (import, add manually) show as white on the red header.
-- No known issues.
-
-### 2026-05-21
-Replaced seed data with the full 79-order HEB export from `heb-orders-2026-05-21 (2).json`. Previous seed had 9 orders; this brings in real order history with more items and a longer date range.
-- No known issues.
-
-### 2026-05-21
-Added persistent category overrides. Items tab category column is now a pill-shaped select — changing it writes to `stocked_loaded_cat_overrides` in localStorage immediately. Overrides flow into `allItems` so they propagate to the overview donut chart, order detail color dots, and price history without any extra steps.
-- No known issues.
-
-### 2026-05-21
-Added asc/desc/off column sorting to the items table. Each of the four column headers is clickable and cycles through states; active column shows a directional chevron, inactive columns show a faded up-chevron hint. Jenny and Karen both audited before push — two fixes applied (null guards on name/cat comparators, key props on chevron elements).
-- No known issues.
-
-### 2026-05-22 (3)
-Applied all 16 Jenny/Karen audit fixes. `TimeFilterBar` hoisted to module scope (was remounting on every render, breaking date input focus). `PriceHistoryCard` keyed on `item.name` instead of array index (view-state no longer bleeds between cards after search). Category drilldown `lastPrice` and `totalSpend` now use `parseUnitPrice(i.unitPrice)` instead of the line total. Bar/donut `onClick` handlers no longer cross-null each other (drilldowns are independent). Drilldowns clear on tab switch. `freshOrders` captured inside `setTimeout` for a clean closure. `drilldownOrderData` resolves from `timeFilteredOrders`. Chart `useEffect` cleanup now destroys both chart instances. Indicator chip has explicit `overview` branch. Hero "Current" shows `—` for missing unit price. `phStatBox` has `min-width: 60px`; `phHeroValue` truncates with ellipsis. `minEntry`/`maxEntry` use `findLast` for most-recent occurrence. Screenshot button hidden unless `VITE_ANTHROPIC_API_KEY` is set (with `console.warn`). Status badge added to bar drilldown panel. `::marker { display: none }` replaced by existing `list-style: none`.
-- No known issues.
-
-### 2026-05-22 (2)
-Redesigned price history cards. Each card now has a hero stat row (current price, total delta chip in red/green, times bought, Low/High stat boxes with dates). The old sparkline is replaced with a responsive 90px Chart.js line graph (HEB red, white-bordered dot on the most recent point, no axes/grid). Price entries collapse into a `<details>` toggle in Graph view. A Graph/Chips button pair at the top-right of each card toggles between the full graph+stats layout and a flat always-expanded chips-only view.
-- No known issues.
-
-### 2026-05-22
-Wired time range filter to the overview tab. All four metrics, both charts, and the category legend now reflect the active filter. Bar chart drilldown: clicking a bar shows a full order detail panel below the charts (same style as orders tab). Donut drilldown: clicking a category segment shows a panel with top items in that category sorted by total spend, including times bought and last price. Both drilldowns reset on filter change and can be closed via X button or re-clicking the same element.
-- No known issues.
-
-### 2026-05-21
-Added time range filtering to the items and orders tabs. A filter bar with 30d/60d/90d pills, a month dropdown (built from actual order dates), and a custom date range picker sits above both tabs. Selection persists to localStorage via `stocked_loaded_time_range`. An active indicator chip shows how many records match (e.g. "12 of 79 orders").
-- No known issues.
+## Last completed work
+Sprint 6 finalized: volatility scores added to all Price History cards (calcVolatilityScore formula: priceRangePct×0.6 + normalizedChangeCount×0.4, capped 100, requires ≥3 purchases). YoY chart added to Insights tab with Week/Month/Year bucket toggle and category filter.
